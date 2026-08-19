@@ -1,0 +1,6 @@
+[
+  { "code": "SBI_CLERK", "title": "SBI Clerk 2024", "description": "State Bank of India Junior Associate Exam" },
+  { "code": "IBPS_CLERK", "title": "IBPS Clerk 2024", "description": "Institute of Banking Personnel Selection Clerk Exam" },
+  { "code": "RBI_ASSIST", "title": "RBI Assistant 2024", "description": "Reserve Bank of India Assistant Recruitment" },
+  { "code": "RRB_CLERK", "title": "RRB Office Assistant 2024", "description": "Regional Rural Banks Office Assistant Exam" }
+]

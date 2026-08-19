@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserRole, Question, TestAttemptResult, UserProfile, ExamCategory } from '../types';
 import { initialQuestions, sampleStudentProfile } from '../data/mockData';
+import { authService } from '../services/authService';
 
 interface AppContextType {
   role: UserRole;
@@ -16,11 +17,19 @@ interface AppContextType {
   saveTestAttempt: (attempt: TestAttemptResult) => void;
   userProfile: UserProfile;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
+  supabaseSession: any;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Supabase Auth Session
+  const [supabaseSession, setSupabaseSession] = useState<any>(null);
+
+  useEffect(() => {
+    authService.getSession().then((session) => setSupabaseSession(session)).catch(() => {});
+  }, []);
+
   // 1. Role State
   const [role, setRoleState] = useState<UserRole>(() => {
     return (localStorage.getItem('bank_app_role') as UserRole) || 'student';
@@ -93,7 +102,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('bank_app_test_attempts');
     if (saved) return JSON.parse(saved);
 
-    // Initial mock completed attempt
     const initialAttempt: TestAttemptResult = {
       attemptId: 'att-001',
       testId: 'test-sbi-clerk-full-01',
@@ -165,6 +173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveTestAttempt,
         userProfile,
         updateUserProfile,
+        supabaseSession,
       }}
     >
       {children}
