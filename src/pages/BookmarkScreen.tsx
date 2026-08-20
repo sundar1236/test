@@ -1,22 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Bookmark, Trash2, ChevronDown, ChevronUp, CheckCircle, BookOpen } from 'lucide-react';
+import { Bookmark, Trash2, ChevronDown, ChevronUp, CheckCircle, Search, Filter } from 'lucide-react';
 
 export const BookmarkScreen: React.FC = () => {
   const { questions, bookmarks, toggleBookmark } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const bookmarkedQuestions = questions.filter((q) => bookmarks.includes(q.id));
+  // Filters
+  const [selectedExam, setSelectedExam] = useState<string>('All');
+  const [selectedSection, setSelectedSection] = useState<string>('All');
+  const [search, setSearch] = useState<string>('');
+
+  const bookmarkedQuestions = useMemo(() => {
+    return questions.filter((q) => {
+      const isBookmarked = bookmarks.includes(q.id);
+      const matchesSearch = q.questionText.toLowerCase().includes(search.toLowerCase()) || q.topic.toLowerCase().includes(search.toLowerCase());
+      const matchesExam = selectedExam === 'All' || q.exam === selectedExam;
+      const matchesSection = selectedSection === 'All' || q.section === selectedSection;
+
+      return isBookmarked && matchesSearch && matchesExam && matchesSection;
+    });
+  }, [questions, bookmarks, search, selectedExam, selectedSection]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-[var(--text-main)] tracking-tight">Bookmarked Questions</h1>
+          <h1 className="text-2xl font-extrabold text-[var(--text-main)] tracking-tight">Bookmarked Revision Repository</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            Review saved difficult, wrong, or revision questions anytime.
+            Review saved difficult, wrong, or revision questions with step-by-step explanations.
           </p>
         </div>
         <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 font-bold text-xs flex items-center gap-1.5">
@@ -24,10 +37,53 @@ export const BookmarkScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search bookmarked questions..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold outline-none"
+          />
+        </div>
+
+        <div>
+          <select
+            value={selectedExam}
+            onChange={(e) => setSelectedExam(e.target.value)}
+            className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold outline-none"
+          >
+            <option value="All">All Exam Series</option>
+            <option value="SBI Clerk">SBI Clerk</option>
+            <option value="IBPS Clerk">IBPS Clerk</option>
+            <option value="RBI Assistant">RBI Assistant</option>
+            <option value="RRB Clerk">RRB Clerk</option>
+          </select>
+        </div>
+
+        <div>
+          <select
+            value={selectedSection}
+            onChange={(e) => setSelectedSection(e.target.value)}
+            className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold outline-none"
+          >
+            <option value="All">All Subject Sections</option>
+            <option value="Quantitative Aptitude">Quantitative Aptitude</option>
+            <option value="Reasoning Ability">Reasoning Ability</option>
+            <option value="English Language">English Language</option>
+            <option value="General & Banking Awareness">General Awareness</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Question List */}
       {bookmarkedQuestions.length === 0 ? (
         <div className="p-12 text-center rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-3">
           <Bookmark className="w-10 h-10 mx-auto text-[var(--text-muted)]" />
-          <h3 className="font-bold text-base text-[var(--text-main)]">No bookmarks saved yet</h3>
+          <h3 className="font-bold text-base text-[var(--text-main)]">No matching bookmarks found</h3>
           <p className="text-xs text-[var(--text-muted)]">
             Click the bookmark icon on any question in the Question Bank or Mock Exams to save it here for revision.
           </p>
@@ -109,7 +165,6 @@ export const BookmarkScreen: React.FC = () => {
           })}
         </div>
       )}
-
     </div>
   );
 };

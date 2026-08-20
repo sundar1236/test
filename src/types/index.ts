@@ -147,3 +147,63 @@ export interface UserProfile {
   globalRank: number;
   targetExam: ExamCategory;
 }
+
+// --- Phase 3E Dashboard & Performance Interfaces ---
+
+export interface DashboardStats {
+  totalTestsAttempted: number;
+  completedTests: number;
+  avgScore: number;
+  avgAccuracy: number;
+  bestScore: number;
+  questionsAttempted: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  unansweredQuestions: number;
+}
+
+export interface SectionPerformance {
+  sectionName: SubjectSection | string;
+  totalQuestions: number;
+  attempted: number;
+  correct: number;
+  incorrect: number;
+  unanswered: number;
+  score: number;
+  accuracy: number;
+  performanceLevel: 'High' | 'Good' | 'Needs Improvement' | 'Weak';
+}
+
+export interface TopicPerformance {
+  topicName: string;
+  sectionName: string;
+  attemptedQuestions: number;
+  correctAnswers: number;
+  accuracy: number;
+  performanceLevel: 'High' | 'Good' | 'Needs Improvement' | 'Weak';
+}
+
+export interface WeakTopic {
+  topicName: string;
+  sectionName: string;
+  accuracy: number;
+  questionsAttempted: number;
+  performanceLevel: 'Needs Improvement' | 'Weak';
+}
+
+export interface PracticeRecommendation {
+  id: string;
+  topicName: string;
+  sectionName: string;
+  recommendedQuestionCount: number;
+  reason: string;
+  actionText: string;
+}
+
+export interface ExamProgressSummary {
+  exam: ExamCategory;
+  testsTaken: number;
+  avgScore: number;
+  avgAccuracy: number;
+  bestScore: number;
+}

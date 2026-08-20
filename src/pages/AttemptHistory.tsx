@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Clock, CheckCircle2, XCircle, ArrowRight, RotateCcw, Calendar, FileText } from 'lucide-react';
+import { Trophy, Clock, CheckCircle2, ArrowRight, RotateCcw, Calendar, Search, Filter, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 export const AttemptHistory: React.FC = () => {
   const { testAttempts } = useApp();
   const navigate = useNavigate();
+
+  // Search & Filter State
+  const [search, setSearch] = useState('');
+  const [selectedExam, setSelectedExam] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'>('date_desc');
+
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
-  const totalPages = Math.ceil(testAttempts.length / pageSize) || 1;
-  const paginatedAttempts = testAttempts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Filter & Sort Logic
+  const filteredAttempts = useMemo(() => {
+    return testAttempts
+      .filter((a) => {
+        const matchesSearch = a.testTitle.toLowerCase().includes(search.toLowerCase());
+        const matchesExam = selectedExam === 'All' || a.exam === selectedExam;
+        return matchesSearch && matchesExam;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'score_desc') return b.score - a.score;
+        if (sortBy === 'score_asc') return a.score - b.score;
+        if (sortBy === 'date_asc') return new Date(a.dateCompleted).getTime() - new Date(b.dateCompleted).getTime();
+        return new Date(b.dateCompleted).getTime() - new Date(a.dateCompleted).getTime();
+      });
+  }, [testAttempts, search, selectedExam, sortBy]);
+
+  const totalPages = Math.ceil(filteredAttempts.length / pageSize) || 1;
+  const paginatedAttempts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredAttempts.slice(start, start + pageSize);
+  }, [filteredAttempts, currentPage, pageSize]);
 
   const formatTimeSpent = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -20,12 +46,12 @@ export const AttemptHistory: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
+      {/* Top Banner */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-[var(--border-color)] shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-[var(--text-main)] tracking-tight">Attempt History</h1>
+          <h1 className="text-2xl font-extrabold text-[var(--text-main)] tracking-tight">Attempt History Repository</h1>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            Review past mock test attempts, scores, accuracy breakdowns, and solution keys.
+            Search, filter, sort, and inspect past SBI, IBPS, RBI, and RRB mock test scorecards.
           </p>
         </div>
         <div className="px-3.5 py-2 rounded-xl bg-[#0F4C81]/10 text-[#0F4C81] dark:text-[#38BDF8] font-bold text-xs flex items-center gap-2">
@@ -34,18 +60,53 @@ export const AttemptHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* Attempts List */}
-      {testAttempts.length === 0 ? (
-        <div className="p-12 text-center bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl">
-          <Trophy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-[var(--text-main)]">No mock test attempts recorded yet</h3>
-          <p className="text-xs text-[var(--text-muted)] mt-1 mb-4">Start practicing with SBI, IBPS, RBI, or RRB mock tests.</p>
-          <button
-            onClick={() => navigate('/mock-tests')}
-            className="px-5 py-2.5 rounded-xl bg-[#0F4C81] text-white font-bold text-xs"
+      {/* Filter & Search Bar */}
+      <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            placeholder="Search attempt by test title..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold text-[var(--text-main)] outline-none"
+          />
+        </div>
+
+        <div>
+          <select
+            value={selectedExam}
+            onChange={(e) => { setSelectedExam(e.target.value); setCurrentPage(1); }}
+            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold text-[var(--text-main)] outline-none"
           >
-            Explore Mock Tests
-          </button>
+            <option value="All">All Exam Series</option>
+            <option value="SBI Clerk">SBI Clerk</option>
+            <option value="IBPS Clerk">IBPS Clerk</option>
+            <option value="RBI Assistant">RBI Assistant</option>
+            <option value="RRB Clerk">RRB Clerk</option>
+          </select>
+        </div>
+
+        <div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold text-[var(--text-main)] outline-none"
+          >
+            <option value="date_desc">Sort by Recent Date</option>
+            <option value="date_asc">Sort by Oldest Date</option>
+            <option value="score_desc">Sort by Highest Score</option>
+            <option value="score_asc">Sort by Lowest Score</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Attempts List */}
+      {filteredAttempts.length === 0 ? (
+        <div className="p-12 text-center bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl space-y-3">
+          <Trophy className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-bold text-[var(--text-main)]">No matching attempts found</h3>
+          <p className="text-xs text-[var(--text-muted)]">Try adjusting your exam filter or search term.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -96,6 +157,27 @@ export const AttemptHistory: React.FC = () => {
               </div>
             </div>
           ))}
+
+          {/* Pagination Controls */}
+          <div className="p-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl flex items-center justify-between">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-3.5 py-2 rounded-xl border border-[var(--border-color)] text-xs font-bold disabled:opacity-40 flex items-center gap-1"
+            >
+              <ChevronLeft className="w-4 h-4" /> Previous
+            </button>
+            <span className="text-xs font-semibold text-[var(--text-muted)]">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-3.5 py-2 rounded-xl border border-[var(--border-color)] text-xs font-bold disabled:opacity-40 flex items-center gap-1"
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>
