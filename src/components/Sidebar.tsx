@@ -9,7 +9,7 @@ import {
   LineChart,
   Bookmark,
   User,
-  ShieldAlert,
+  BrainCircuit,
   CheckCircle2,
   Settings,
   History
@@ -26,6 +26,7 @@ export const Sidebar: React.FC = () => {
     { label: 'Mock Tests', path: '/mock-tests', icon: FileCheck2 },
     { label: 'Attempt History', path: '/attempts', icon: History },
     { label: 'Performance', path: '/performance', icon: LineChart },
+    { label: 'Practice Mode', path: '/practice', icon: BrainCircuit },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
     { label: 'Profile', path: '/profile', icon: User },
   ];

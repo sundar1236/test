@@ -113,6 +113,7 @@ export interface TestAttemptResult {
   testId: string;
   testTitle: string;
   exam: ExamCategory;
+  phase?: 'prelims' | 'mains';
   dateCompleted: string;
   timeSpentSeconds: number;
   totalQuestions: number;
@@ -160,6 +161,7 @@ export interface DashboardStats {
   correctAnswers: number;
   incorrectAnswers: number;
   unansweredQuestions: number;
+  avgTimePerQuestionSeconds?: number;
 }
 
 export interface SectionPerformance {
@@ -172,6 +174,7 @@ export interface SectionPerformance {
   score: number;
   accuracy: number;
   performanceLevel: 'High' | 'Good' | 'Needs Improvement' | 'Weak';
+  avgTimeSeconds?: number;
 }
 
 export interface TopicPerformance {
@@ -181,6 +184,9 @@ export interface TopicPerformance {
   correctAnswers: number;
   accuracy: number;
   performanceLevel: 'High' | 'Good' | 'Needs Improvement' | 'Weak';
+  recentAccuracy?: number;
+  avgTimeSeconds?: number;
+  masteryStatus?: MasteryStatus;
 }
 
 export interface WeakTopic {
@@ -189,6 +195,7 @@ export interface WeakTopic {
   accuracy: number;
   questionsAttempted: number;
   performanceLevel: 'Needs Improvement' | 'Weak';
+  recommendationReason?: string;
 }
 
 export interface PracticeRecommendation {
@@ -198,6 +205,7 @@ export interface PracticeRecommendation {
   recommendedQuestionCount: number;
   reason: string;
   actionText: string;
+  type: 'weak_topic' | 'low_accuracy_section' | 'speed_improvement' | 'review_incorrect';
 }
 
 export interface ExamProgressSummary {
@@ -206,4 +214,90 @@ export interface ExamProgressSummary {
   avgScore: number;
   avgAccuracy: number;
   bestScore: number;
+}
+
+// --- Phase 6 Advanced Analytics & Learning System Interfaces ---
+
+export type MasteryStatus = 'Not Started' | 'Learning' | 'Needs Practice' | 'Improving' | 'Strong';
+
+export interface PerformanceTrendPoint {
+  attemptId: string;
+  testTitle: string;
+  exam: ExamCategory;
+  phase: 'prelims' | 'mains';
+  dateCompleted: string;
+  formattedDate: string;
+  score: number;
+  maxScore: number;
+  accuracy: number;
+  percentile: number;
+  timeSpentSeconds: number;
+}
+
+export interface SectionAnalyticsSummary {
+  sectionName: SubjectSection | string;
+  questionsAttempted: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  unansweredQuestions: number;
+  totalScore: number;
+  maxScore: number;
+  accuracy: number;
+  avgTimePerQuestionSeconds: number;
+  performanceLevel: 'High' | 'Good' | 'Needs Improvement' | 'Weak';
+}
+
+export interface TopicAnalyticsSummary {
+  topicName: string;
+  sectionName: string;
+  attemptedQuestions: number;
+  correctAnswers: number;
+  overallAccuracy: number;
+  recentAccuracy: number; // Weighted last 3 attempts
+  avgTimePerQuestionSeconds: number;
+  masteryStatus: MasteryStatus;
+  sampleSizeValid: boolean; // Minimum 5 questions attempted
+}
+
+export interface TimeAnalyticsSummary {
+  avgTimePerQuestionSeconds: number;
+  overallTotalTimeSeconds: number;
+  fastestQuestionSeconds: number;
+  slowestQuestionSeconds: number;
+  sectionAvgTimeSeconds: Record<string, number>;
+  timeEfficiencyLevel: 'Optimal' | 'Acceptable' | 'Needs Improvement' | 'Slow';
+  recommendation: string;
+}
+
+export interface AttemptComparison {
+  attemptA: TestAttemptResult;
+  attemptB: TestAttemptResult;
+  scoreDiff: number;
+  accuracyDiff: number;
+  correctDiff: number;
+  wrongDiff: number;
+  timeSpentDiffSeconds: number;
+  percentileDiff: number;
+  isImprovement: boolean;
+}
+
+export interface PracticeSet {
+  id: string;
+  title: string;
+  description: string;
+  type: 'incorrect_questions' | 'weak_topics' | 'section_drill' | 'custom';
+  examFilter?: ExamCategory;
+  sectionFilter?: SubjectSection;
+  topicFilter?: string;
+  questions: Question[];
+  createdAt: string;
+}
+
+export interface PerformanceInsight {
+  id: string;
+  type: 'improvement' | 'warning' | 'speed' | 'strength';
+  message: string;
+  metricLabel: string;
+  metricValue: string;
+  derivedFromDate: string;
 }

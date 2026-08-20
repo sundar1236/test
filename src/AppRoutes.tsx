@@ -10,6 +10,7 @@ import { MockTestList } from './pages/MockTestList';
 import { ExamSimulatorScreen } from './pages/ExamSimulatorScreen';
 import { ResultScreen } from './pages/ResultScreen';
 import { PerformanceAnalytics } from './pages/PerformanceAnalytics';
+import { PracticeModeScreen } from './pages/PracticeModeScreen';
 import { BookmarkScreen } from './pages/BookmarkScreen';
 import { ProfileScreen } from './pages/ProfileScreen';
 import { AttemptHistory } from './pages/AttemptHistory';
@@ -78,6 +79,10 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/performance"
           element={role === 'guest' ? <Navigate to="/" replace /> : <PerformanceAnalytics />}
+        />
+        <Route
+          path="/practice"
+          element={role === 'guest' ? <Navigate to="/" replace /> : <PracticeModeScreen />}
         />
         <Route
           path="/bookmarks"
