@@ -11,7 +11,12 @@ import {
   Bookmark,
   Send,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Grid,
+  X,
+  CheckCircle2,
+  HelpCircle,
+  Check
 } from 'lucide-react';
 
 export const ExamSimulatorScreen: React.FC = () => {
@@ -30,6 +35,7 @@ export const ExamSimulatorScreen: React.FC = () => {
   const [activeSectionName, setActiveSectionName] = useState<string>('');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
+  const [showMobilePalette, setShowMobilePalette] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -235,43 +241,110 @@ export const ExamSimulatorScreen: React.FC = () => {
     );
   }
 
+  const renderPaletteGrid = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200">
+          <span className="w-3.5 h-3.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0"></span>
+          <span>{paletteCounts.answered} Answered</span>
+        </div>
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200">
+          <span className="w-3.5 h-3.5 rounded-full bg-rose-600 dark:bg-rose-400 shrink-0"></span>
+          <span>{paletteCounts.notAnswered} Not Answered</span>
+        </div>
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-100 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200">
+          <span className="w-3.5 h-3.5 rounded-full bg-purple-600 dark:bg-purple-400 shrink-0"></span>
+          <span>{paletteCounts.marked} Review</span>
+        </div>
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+          <span className="w-3.5 h-3.5 rounded-full bg-slate-400 dark:bg-slate-500 shrink-0"></span>
+          <span>{paletteCounts.notVisited} Not Visited</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wide">Questions Grid</h4>
+        <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 max-h-64 overflow-y-auto pr-1">
+          {sectionQuestions.map((q, idx) => {
+            const qAns = answersMap[q.id];
+            const isCurrent = idx === currentQuestionIndex;
+
+            let badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700';
+            if (qAns?.status === 'answered') {
+              badgeStyle = 'bg-emerald-600 dark:bg-emerald-500 text-white font-bold border-emerald-700';
+            } else if (qAns?.status === 'not_answered') {
+              badgeStyle = 'bg-rose-600 dark:bg-rose-500 text-white font-bold border-rose-700';
+            } else if (qAns?.status === 'marked_for_review') {
+              badgeStyle = 'bg-purple-600 dark:bg-purple-500 text-white font-bold border-purple-700';
+            }
+
+            return (
+              <button
+                key={q.id}
+                onClick={() => {
+                  setCurrentQuestionIndex(idx);
+                  setShowMobilePalette(false);
+                }}
+                className={`h-10 rounded-xl text-xs font-black border flex items-center justify-center transition-all ${badgeStyle} ${
+                  isCurrent ? 'ring-2 ring-[#0F4C81] dark:ring-[#38BDF8] ring-offset-2 scale-105 shadow-md' : ''
+                }`}
+              >
+                {idx + 1}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#F8FAFC] dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 bg-[#F8FAFC] dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 flex flex-col font-sans overflow-hidden select-none">
       {notification && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-600 text-white font-bold text-xs px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 animate-bounce">
-          <AlertCircle className="w-4 h-4" />
-          <span>{notification}</span>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-amber-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-bounce max-w-[90vw]">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="truncate">{notification}</span>
         </div>
       )}
 
-      <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-xs">
-        <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 rounded bg-[#0F4C81]/10 text-[#0F4C81] dark:text-[#38BDF8] font-bold text-xs tracking-wide">
+      {/* Top Header */}
+      <header className="h-14 sm:h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#151D2A] px-3 sm:px-6 flex items-center justify-between shrink-0 shadow-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="px-2 py-0.5 rounded bg-[#0F4C81]/10 text-[#0F4C81] dark:text-[#38BDF8] font-bold text-[10px] sm:text-xs tracking-wide shrink-0">
             {testMeta.exam}
           </span>
-          <h1 className="font-bold text-sm sm:text-base truncate max-w-md text-slate-800 dark:text-slate-100">
+          <h1 className="font-bold text-xs sm:text-base truncate max-w-[160px] sm:max-w-md text-slate-900 dark:text-slate-100">
             {testMeta.title}
           </h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-mono font-bold text-sm">
-            <Clock className="w-4 h-4 animate-pulse text-amber-600" />
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 font-mono font-bold text-xs sm:text-sm">
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse text-amber-600" />
             <span>{formattedTime}</span>
           </div>
 
           <button
+            onClick={() => setShowMobilePalette(!showMobilePalette)}
+            className="md:hidden p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+            aria-label="Toggle Question Palette"
+          >
+            <Grid className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={() => setShowSubmitModal(true)}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5"
+            className="hidden sm:flex px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors items-center gap-1.5"
           >
             <Send className="w-3.5 h-3.5" /> Submit Test
           </button>
         </div>
       </header>
 
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 sm:px-6 flex items-center gap-2 overflow-x-auto shrink-0">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Sections:</span>
+      {/* Section Tabs */}
+      <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#151D2A]/60 px-3 sm:px-6 flex items-center gap-1.5 sm:gap-2 overflow-x-auto shrink-0">
+        <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-1 shrink-0">Sections:</span>
         {sectionsList.map((secName) => (
           <button
             key={secName}
@@ -279,10 +352,10 @@ export const ExamSimulatorScreen: React.FC = () => {
               setActiveSectionName(secName);
               setCurrentQuestionIndex(0);
             }}
-            className={`px-4 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
               activeSectionName === secName
-                ? 'border-[#0F4C81] text-[#0F4C81] dark:text-[#38BDF8] bg-[#0F4C81]/5'
-                : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                ? 'border-[#0F4C81] text-[#0F4C81] dark:text-[#38BDF8] bg-[#0F4C81]/10 dark:bg-[#38BDF8]/10'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {secName}
@@ -290,78 +363,86 @@ export const ExamSimulatorScreen: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-[#0F4C81] dark:text-[#38BDF8]">
-                Question {currentQuestionIndex + 1}
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* Main Question Display Area */}
+        <div className="flex-1 flex flex-col p-3 sm:p-6 overflow-y-auto bg-white dark:bg-[#0B0F17]">
+
+          {/* Question Header Status Bar */}
+          <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2.5 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm sm:text-base font-black text-[#0F4C81] dark:text-[#38BDF8] shrink-0">
+                Q{currentQuestionIndex + 1}
               </span>
-              <span className="text-xs text-slate-500 font-medium">
-                of {sectionQuestions.length} in {activeSectionName}
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium truncate">
+                of {sectionQuestions.length} ({activeSectionName})
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                +1.0 Marks • -0.25 Negative
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                +1.0 / -0.25
               </span>
               <button
                 onClick={() => toggleBookmark(currentQuestion.id)}
                 className={`p-1.5 rounded-lg border transition-colors ${
                   bookmarks.includes(currentQuestion.id)
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-700'
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                    : 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900'
                 }`}
+                title="Bookmark Question"
               >
                 <Bookmark className={`w-4 h-4 ${bookmarks.includes(currentQuestion.id) ? 'fill-current' : ''}`} />
               </button>
             </div>
           </div>
 
-          <div className="space-y-6 flex-1">
-            <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed">
+          {/* Question Body */}
+          <div className="space-y-4 sm:space-y-6 flex-1 pb-24 md:pb-6">
+            <div className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 leading-relaxed pr-1">
               {currentQuestion.questionText}
-            </h2>
+            </div>
 
-            <div className="space-y-3 max-w-2xl">
+            {/* Answer Options */}
+            <div className="space-y-2.5 sm:space-y-3 max-w-2xl">
               {currentQuestion.options.map((opt) => {
                 const isSelected = answersMap[currentQuestion.id]?.selectedOptionId === opt.id;
                 return (
                   <button
                     key={opt.id}
                     onClick={() => handleSelectOption(opt.id)}
-                    className={`w-full p-4 rounded-xl border text-left text-sm font-semibold transition-all flex items-center gap-3.5 ${
+                    className={`w-full p-3.5 sm:p-4 rounded-xl border-2 text-left text-xs sm:text-sm font-medium transition-all flex items-center gap-3 ${
                       isSelected
-                        ? 'border-[#0F4C81] bg-[#0F4C81]/10 text-[#0F4C81] dark:text-[#38BDF8] shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-800 dark:text-slate-200'
+                        ? 'border-[#0F4C81] dark:border-[#38BDF8] bg-[#0F4C81]/10 dark:bg-[#38BDF8]/15 text-[#0F4C81] dark:text-[#38BDF8] font-bold shadow-sm'
+                        : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-[#151D2A] hover:border-slate-400 dark:hover:border-slate-600 text-slate-900 dark:text-slate-100'
                     }`}
                   >
-                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                    <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
                       isSelected
-                        ? 'bg-[#0F4C81] text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#0F4C81] dark:bg-[#38BDF8] text-white dark:text-slate-950'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
                     }`}>
-                      {opt.option_key}
+                      {isSelected ? <Check className="w-4 h-4 stroke-[3]" /> : opt.option_key}
                     </span>
-                    <span>{opt.text}</span>
+                    <span className="flex-1 leading-snug">{opt.text}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          {/* Desktop Footer Actions */}
+          <div className="hidden md:flex pt-4 mt-auto border-t border-slate-200 dark:border-slate-800 items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleMarkForReview}
-                className="px-4 py-2.5 rounded-xl border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs hover:bg-purple-500/20 transition-colors"
+                className="px-3.5 py-2 rounded-xl border border-purple-400 dark:border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition-colors"
               >
                 Mark For Review
               </button>
               <button
                 onClick={handleClearResponse}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 font-semibold text-xs transition-colors"
+                className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 font-semibold text-xs transition-colors"
               >
                 Clear Response
               </button>
@@ -371,13 +452,13 @@ export const ExamSimulatorScreen: React.FC = () => {
               <button
                 disabled={currentQuestionIndex === 0}
                 onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs disabled:opacity-40 flex items-center gap-1"
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs disabled:opacity-40 flex items-center gap-1"
               >
                 <ChevronLeft className="w-4 h-4" /> Previous
               </button>
               <button
                 onClick={handleSaveAndNext}
-                className="px-6 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0B3A64] text-white font-black text-xs shadow-md transition-all flex items-center gap-1"
+                className="px-5 py-2 rounded-xl bg-[#0F4C81] hover:bg-[#0B3A64] text-white font-black text-xs shadow-md transition-all flex items-center gap-1"
               >
                 Save & Next <ChevronRight className="w-4 h-4" />
               </button>
@@ -385,58 +466,11 @@ export const ExamSimulatorScreen: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-full md:w-80 bg-slate-50 dark:bg-slate-900/80 p-4 sm:p-5 flex flex-col justify-between overflow-y-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
+        {/* Desktop Sidebar Question Palette */}
+        <div className="hidden md:flex w-80 bg-slate-50 dark:bg-[#151D2A] p-5 flex-col justify-between overflow-y-auto border-l border-slate-200 dark:border-slate-800">
           <div className="space-y-4">
-            <h3 className="font-black text-xs uppercase tracking-wider text-slate-400">Question Palette</h3>
-
-            <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                <span>{paletteCounts.answered} Answered</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-400">
-                <span className="w-3 h-3 rounded-full bg-rose-500"></span>
-                <span>{paletteCounts.notAnswered} Not Answered</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-400">
-                <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                <span>{paletteCounts.marked} Review</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-500">
-                <span className="w-3 h-3 rounded-full bg-slate-400"></span>
-                <span>{paletteCounts.notVisited} Not Visited</span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <div className="grid grid-cols-5 gap-2 max-h-60 overflow-y-auto pr-1">
-                {sectionQuestions.map((q, idx) => {
-                  const qAns = answersMap[q.id];
-                  const isCurrent = idx === currentQuestionIndex;
-
-                  let badgeColor = 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
-                  if (qAns?.status === 'answered') {
-                    badgeColor = 'bg-emerald-500 text-white font-bold';
-                  } else if (qAns?.status === 'not_answered') {
-                    badgeColor = 'bg-rose-500 text-white font-bold';
-                  } else if (qAns?.status === 'marked_for_review') {
-                    badgeColor = 'bg-purple-600 text-white font-bold';
-                  }
-
-                  return (
-                    <button
-                      key={q.id}
-                      onClick={() => setCurrentQuestionIndex(idx)}
-                      className={`h-9 rounded-lg text-xs flex items-center justify-center transition-all ${badgeColor} ${
-                        isCurrent ? 'ring-2 ring-[#0F4C81] ring-offset-2' : ''
-                      }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Question Palette</h3>
+            {renderPaletteGrid()}
           </div>
 
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
@@ -449,43 +483,110 @@ export const ExamSimulatorScreen: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Mobile Slide-Up Question Palette Drawer */}
+        {showMobilePalette && (
+          <div className="md:hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-end">
+            <div className="bg-white dark:bg-[#151D2A] border-t border-slate-200 dark:border-slate-800 rounded-t-2xl p-4 space-y-4 max-h-[80vh] overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                <h3 className="font-black text-sm text-slate-900 dark:text-slate-100">Question Palette Overview</h3>
+                <button
+                  onClick={() => setShowMobilePalette(false)}
+                  className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {renderPaletteGrid()}
+
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    setShowMobilePalette(false);
+                    setShowSubmitModal(true);
+                  }}
+                  className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-md"
+                >
+                  Submit Entire Test
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Mobile Bottom Sticky Navigation Controls */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#151D2A] border-t border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between gap-2 shadow-lg">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleMarkForReview}
+            className="p-2.5 rounded-xl border border-purple-400 dark:border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-[11px]"
+            title="Mark for Review"
+          >
+            Review
+          </button>
+          <button
+            onClick={handleClearResponse}
+            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-[11px]"
+          >
+            Clear
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            disabled={currentQuestionIndex === 0}
+            onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
+            className="px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs disabled:opacity-40 flex items-center gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Prev
+          </button>
+          <button
+            onClick={handleSaveAndNext}
+            className="px-4 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0B3A64] text-white font-black text-xs shadow-md flex items-center gap-1"
+          >
+            Save & Next <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Confirmation Submit Modal */}
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#151D2A] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-slate-900 dark:text-slate-100">
               <ShieldCheck className="w-6 h-6 text-[#0F4C81] dark:text-[#38BDF8]" />
               <h3 className="text-lg font-black">Submit Test Confirmation</h3>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-300">
               Are you sure you want to submit your test? Once submitted, your answers will be locked and scored immediately.
             </p>
 
-            <div className="grid grid-cols-2 gap-3 py-2">
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-center">
-                <span className="block text-xl font-black text-emerald-600">{paletteCounts.answered}</span>
-                <span className="text-[11px] font-bold text-slate-500">Answered</span>
+            <div className="grid grid-cols-2 gap-2.5 py-1">
+              <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-center">
+                <span className="block text-xl font-black text-emerald-800 dark:text-emerald-300">{paletteCounts.answered}</span>
+                <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">Answered</span>
               </div>
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-center">
-                <span className="block text-xl font-black text-rose-600">{paletteCounts.notAnswered + paletteCounts.notVisited}</span>
-                <span className="text-[11px] font-bold text-slate-500">Unanswered</span>
+              <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800 text-center">
+                <span className="block text-xl font-black text-rose-800 dark:text-rose-300">{paletteCounts.notAnswered + paletteCounts.notVisited}</span>
+                <span className="text-[11px] font-bold text-rose-900 dark:text-rose-200">Unanswered</span>
               </div>
-              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-center">
-                <span className="block text-xl font-black text-purple-600">{paletteCounts.marked}</span>
-                <span className="text-[11px] font-bold text-slate-500">Marked Review</span>
+              <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-950/50 border border-purple-300 dark:border-purple-800 text-center">
+                <span className="block text-xl font-black text-purple-800 dark:text-purple-300">{paletteCounts.marked}</span>
+                <span className="text-[11px] font-bold text-purple-900 dark:text-purple-200">Marked Review</span>
               </div>
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-center">
-                <span className="block text-xl font-black text-slate-700 dark:text-slate-300">{questions.length}</span>
-                <span className="text-[11px] font-bold text-slate-500">Total Questions</span>
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center">
+                <span className="block text-xl font-black text-slate-800 dark:text-slate-200">{questions.length}</span>
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Total Questions</span>
               </div>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setShowSubmitModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100"
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-100"
               >
                 Return to Test
               </button>
