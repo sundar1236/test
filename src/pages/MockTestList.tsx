@@ -1,15 +1,13 @@
 import React from 'react';
 import { initialMockTests } from '../data/mockData';
 import { useNavigate } from 'react-router-dom';
-import { Clock, HelpCircle, Trophy, Play, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Clock, HelpCircle, Trophy, Play } from 'lucide-react';
 
 export const MockTestList: React.FC = () => {
   const navigate = useNavigate();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[var(--text-main)] tracking-tight">Full Mock Test Series</h1>
         <p className="text-sm text-[var(--text-muted)] mt-1">
@@ -17,7 +15,6 @@ export const MockTestList: React.FC = () => {
         </p>
       </div>
 
-      {/* Tests Grid */}
       <div className="space-y-4">
         {initialMockTests.map((test) => (
           <div
@@ -41,7 +38,6 @@ export const MockTestList: React.FC = () => {
 
               <h2 className="text-xl font-bold text-[var(--text-main)]">{test.title}</h2>
 
-              {/* Meta stats bar */}
               <div className="flex items-center gap-4 text-xs font-semibold text-[var(--text-muted)] flex-wrap">
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-[#0F4C81] dark:text-[#38BDF8]" /> {test.durationMinutes} Minutes
@@ -54,15 +50,17 @@ export const MockTestList: React.FC = () => {
                 </span>
               </div>
 
-              {/* Sections Included */}
               <div className="flex items-center gap-2 pt-1">
                 <span className="text-xs font-bold text-[var(--text-muted)] uppercase">Sections:</span>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {test.sections.map((sec, i) => (
-                    <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[var(--text-main)]">
-                      {sec}
-                    </span>
-                  ))}
+                  {Array.isArray(test.sections) && test.sections.map((sec, i) => {
+                    const secLabel = typeof sec === 'string' ? sec : sec.sectionName;
+                    return (
+                      <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[var(--text-main)]">
+                        {secLabel}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -78,7 +76,6 @@ export const MockTestList: React.FC = () => {
           </div>
         ))}
       </div>
-
     </div>
   );
 };

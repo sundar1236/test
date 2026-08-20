@@ -23,14 +23,12 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Supabase Auth Session
   const [supabaseSession, setSupabaseSession] = useState<any>(null);
 
   useEffect(() => {
     authService.getSession().then((session) => setSupabaseSession(session)).catch(() => {});
   }, []);
 
-  // 1. Role State
   const [role, setRoleState] = useState<UserRole>(() => {
     return (localStorage.getItem('bank_app_role') as UserRole) || 'student';
   });
@@ -40,7 +38,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('bank_app_role', newRole);
   };
 
-  // 2. Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('bank_app_theme') as 'light' | 'dark') || 'light';
   });
@@ -59,7 +56,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  // 3. Bookmarks State
   const [bookmarks, setBookmarks] = useState<string[]>(() => {
     const saved = localStorage.getItem('bank_app_bookmarks');
     return saved ? JSON.parse(saved) : ['q-quant-02', 'q-reason-01'];
@@ -75,7 +71,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // 4. Questions Management State
   const [questions, setQuestions] = useState<Question[]>(() => {
     const saved = localStorage.getItem('bank_app_questions');
     return saved ? JSON.parse(saved) : initialQuestions;
@@ -97,7 +92,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // 5. Test Attempts State
   const [testAttempts, setTestAttempts] = useState<TestAttemptResult[]>(() => {
     const saved = localStorage.getItem('bank_app_test_attempts');
     if (saved) return JSON.parse(saved);
@@ -119,9 +113,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       accuracy: 86.36,
       percentile: 94.2,
       sectionBreakdown: {
-        'Quantitative Aptitude': { score: 26, total: 35, correct: 27, wrong: 4 },
-        'Reasoning Ability': { score: 31, total: 35, correct: 32, wrong: 4 },
-        'English Language': { score: 16, total: 30, correct: 17, wrong: 4 },
+        'Quantitative Aptitude': {
+          sectionId: 'Quantitative Aptitude',
+          sectionName: 'Quantitative Aptitude',
+          totalQuestions: 35,
+          attempted: 31,
+          correct: 27,
+          incorrect: 4,
+          skipped: 4,
+          score: 26,
+          maxScore: 35,
+          accuracy: 87.1,
+        },
+        'Reasoning Ability': {
+          sectionId: 'Reasoning Ability',
+          sectionName: 'Reasoning Ability',
+          totalQuestions: 35,
+          attempted: 36,
+          correct: 32,
+          incorrect: 4,
+          skipped: 0,
+          score: 31,
+          maxScore: 35,
+          accuracy: 88.8,
+        },
+        'English Language': {
+          sectionId: 'English Language',
+          sectionName: 'English Language',
+          totalQuestions: 30,
+          attempted: 21,
+          correct: 17,
+          incorrect: 4,
+          skipped: 9,
+          score: 16,
+          maxScore: 30,
+          accuracy: 80.9,
+        },
       },
       topicBreakdown: {
         'Percentage': { total: 5, correct: 5, accuracy: 100 },
@@ -143,7 +170,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // 6. User Profile State
   const [userProfile, setUserProfileState] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('bank_app_user_profile');
     return saved ? JSON.parse(saved) : sampleStudentProfile;

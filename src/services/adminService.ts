@@ -11,12 +11,17 @@ export const adminService = {
     return data;
   },
 
-  async getAuditLogs() {
-    const { data, error } = await supabase
+  async getAuditLogs(search?: string) {
+    let query = supabase
       .from('admin_audit_logs')
       .select('*, profiles(full_name, email)')
       .order('created_at', { ascending: false });
 
+    if (search) {
+      query = query.or(`action.ilike.%${search}%,target_entity.ilike.%${search}%`);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data;
   },

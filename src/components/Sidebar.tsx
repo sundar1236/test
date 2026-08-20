@@ -12,8 +12,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   Settings,
-  HelpCircle,
-  FileSpreadsheet
+  History
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -25,6 +24,7 @@ export const Sidebar: React.FC = () => {
     { label: 'Question Bank', path: '/questions', icon: BookOpen },
     { label: 'Topic Tests', path: '/topics', icon: FolderKanban },
     { label: 'Mock Tests', path: '/mock-tests', icon: FileCheck2 },
+    { label: 'Attempt History', path: '/attempts', icon: History },
     { label: 'Performance', path: '/performance', icon: LineChart },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
     { label: 'Profile', path: '/profile', icon: User },
@@ -32,18 +32,20 @@ export const Sidebar: React.FC = () => {
 
   const adminNavItems = [
     { label: 'Admin Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-    { label: 'Questions', path: '/admin/questions', icon: BookOpen },
-    { label: 'Categories & Topics', path: '/admin/categories', icon: FolderKanban },
+    { label: 'Questions Manager', path: '/admin/questions', icon: BookOpen },
+    { label: 'Bulk Ingestion Center', path: '/admin/import', icon: FolderKanban },
+    { label: 'Exam & Topic Metadata', path: '/admin/categories', icon: FolderKanban },
     { label: 'Tests Management', path: '/admin/tests', icon: FileCheck2 },
-    { label: 'Validation Queue', path: '/admin/validation', icon: CheckCircle2 },
-    { label: 'System Analytics', path: '/admin/analytics', icon: LineChart },
+    { label: 'Review & Validation Queue', path: '/admin/validation', icon: CheckCircle2 },
+    { label: 'System Audit Logs', path: '/admin/analytics', icon: History },
   ];
 
   const commonNavItems = [
     { label: 'Design System & Docs', path: '/design-system', icon: Settings },
   ];
 
-  const navItems = role === 'admin' ? adminNavItems : studentNavItems;
+  const isAdminOrReviewer = role === 'admin' || role === 'super_admin' || role === 'question_reviewer';
+  const navItems = isAdminOrReviewer ? adminNavItems : studentNavItems;
 
   return (
     <>
@@ -52,7 +54,7 @@ export const Sidebar: React.FC = () => {
         <div className="space-y-6 flex-1">
           <div>
             <p className="px-3 text-[11px] font-bold tracking-wider text-[var(--text-muted)] uppercase mb-2">
-              {role === 'admin' ? 'Admin Controls' : 'Student Navigation'}
+              {isAdminOrReviewer ? `${role.replace('_', ' ')} Controls` : 'Student Navigation'}
             </p>
             <nav className="space-y-1">
               {navItems.map((item) => {

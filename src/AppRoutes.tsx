@@ -12,13 +12,25 @@ import { ResultScreen } from './pages/ResultScreen';
 import { PerformanceAnalytics } from './pages/PerformanceAnalytics';
 import { BookmarkScreen } from './pages/BookmarkScreen';
 import { ProfileScreen } from './pages/ProfileScreen';
+import { AttemptHistory } from './pages/AttemptHistory';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { QuestionManagement } from './pages/QuestionManagement';
+import { CategoryManagement } from './pages/CategoryManagement';
 import { ValidationQueue } from './pages/ValidationQueue';
+import { AuditLogScreen } from './pages/AuditLogScreen';
 import { DesignSystemDoc } from './pages/DesignSystemDoc';
+
+// Admin Import Center Components
+import { ImportDashboard } from './components/admin/import/ImportDashboard';
+import { CSVImport } from './components/admin/import/CSVImport';
+import { JSONImport } from './components/admin/import/JSONImport';
+import { ImportHistory } from './components/admin/import/ImportHistory';
+import { DuplicateReview } from './components/admin/import/DuplicateReview';
 
 export const AppRoutes: React.FC = () => {
   const { role } = useApp();
+
+  const isAdminOrReviewer = role === 'admin' || role === 'super_admin' || role === 'question_reviewer';
 
   return (
     <Routes>
@@ -56,6 +68,10 @@ export const AppRoutes: React.FC = () => {
           element={role === 'guest' ? <Navigate to="/" replace /> : <ResultScreen />}
         />
         <Route
+          path="/attempts"
+          element={role === 'guest' ? <Navigate to="/" replace /> : <AttemptHistory />}
+        />
+        <Route
           path="/performance"
           element={role === 'guest' ? <Navigate to="/" replace /> : <PerformanceAnalytics />}
         />
@@ -71,27 +87,49 @@ export const AppRoutes: React.FC = () => {
         {/* Admin Routes */}
         <Route
           path="/admin/dashboard"
-          element={role !== 'admin' ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
         />
         <Route
           path="/admin/questions"
-          element={role !== 'admin' ? <Navigate to="/dashboard" replace /> : <QuestionManagement />}
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <QuestionManagement />}
         />
         <Route
           path="/admin/categories"
-          element={role !== 'admin' ? <Navigate to="/dashboard" replace /> : <QuestionManagement />}
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <CategoryManagement />}
         />
         <Route
           path="/admin/tests"
-          element={role !== 'admin' ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
         />
         <Route
           path="/admin/validation"
-          element={role !== 'admin' ? <Navigate to="/dashboard" replace /> : <ValidationQueue />}
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <ValidationQueue />}
         />
         <Route
           path="/admin/analytics"
-          element={role !== 'admin' ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AuditLogScreen />}
+        />
+
+        {/* Admin Bulk Import Sub-routes */}
+        <Route
+          path="/admin/import"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <ImportDashboard />}
+        />
+        <Route
+          path="/admin/import/csv"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <CSVImport />}
+        />
+        <Route
+          path="/admin/import/json"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <JSONImport />}
+        />
+        <Route
+          path="/admin/import/history"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <ImportHistory />}
+        />
+        <Route
+          path="/admin/import/duplicates"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <DuplicateReview />}
         />
 
         {/* Fallback */}

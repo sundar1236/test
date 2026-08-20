@@ -19,7 +19,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'A',
     explanation: '40% of X = (40/100)X = (2/5)X. Given (2/5)X = (2/5)Y. Therefore X/Y = 1/1 = 1:1.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 99,
   },
   {
@@ -39,7 +39,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'B',
     explanation: 'Let CP = 100x. Initial SP = 120x. New CP = 90x. New SP = 90x * 1.25 = 112.5x. Difference: 120x - 112.5x = 7.5x = 18. So x = 2.4. CP = 100 * 2.4 = ₹240.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 97,
   },
   {
@@ -59,7 +59,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'A',
     explanation: '1 day work of (A + B) = 1/12 + 1/18 = 5/36. In 4 days, work done = 4 * (5/36) = 20/36 = 5/9. Remaining work = 1 - 5/9 = 4/9.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 98,
   },
   {
@@ -79,7 +79,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'C',
     explanation: 'Let ages be 3x and 5x. (3x + 6)/(5x + 6) = 2/3 => 9x + 18 = 10x + 12 => x = 6. Age of B = 5 * 6 = 30 years.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 96,
   },
 
@@ -101,7 +101,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'C',
     explanation: 'Since neither conclusion individually follows but they form a complementary pair ("Some" and "No" with identical terms), Either I or II follows.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 95,
   },
   {
@@ -121,7 +121,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'A',
     explanation: 'Pattern: C+2=E, L+3=O, E+1=F, R+2=T, K+2=M. Applying similar shift to S(+2)=U, M(+2)=O, A(+2)=C, R(+4)=V, T(+0)=T gives UOCVT.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 94,
   },
   {
@@ -141,7 +141,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'B',
     explanation: "Rohit's grandfather's only son is Rohit's father. The daughter of Rohit's father is Rohit's sister.",
-    status: 'approved',
+    status: 'published',
     aiConfidence: 99,
   },
 
@@ -163,7 +163,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'B',
     explanation: 'When subjects are connected by "neither... nor", the verb agrees with the closer subject. "employees" is plural, so it should be "were aware of".',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 98,
   },
   {
@@ -183,7 +183,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'B',
     explanation: 'Prudent means acting with or showing care and thought for the future; wise, cautious, or judicious.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 100,
   },
 
@@ -205,7 +205,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'A',
     explanation: 'RTGS stands for Real Time Gross Settlement, a continuous funds transfer system in real-time basis without netting.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 100,
   },
   {
@@ -225,7 +225,7 @@ export const initialQuestions: Question[] = [
     ],
     correctOptionId: 'B',
     explanation: 'NPCI (National Payments Corporation of India) developed and manages UPI.',
-    status: 'approved',
+    status: 'published',
     aiConfidence: 100,
   },
 
@@ -276,6 +276,8 @@ export const initialQuestions: Question[] = [
   }
 ];
 
+export const mockQuestions = initialQuestions;
+
 export const initialTopicMetas: TopicMeta[] = [
   { id: 'topic-quant-perc', section: 'Quantitative Aptitude', title: 'Percentage & Ratio', questionCount: 140, testsCount: 12, difficulty: 'Easy', completionPercent: 85, lastAttemptDate: '2024-05-10' },
   { id: 'topic-quant-pl', section: 'Quantitative Aptitude', title: 'Profit & Loss', questionCount: 110, testsCount: 9, difficulty: 'Moderate', completionPercent: 60, lastAttemptDate: '2024-05-12' },
@@ -291,47 +293,57 @@ export const initialMockTests: MockTestMeta[] = [
     id: 'test-ibps-clerk-full-01',
     title: 'IBPS Clerk Prelims Full Mock 1',
     exam: 'IBPS Clerk',
+    phase: 'prelims',
     durationMinutes: 60,
     totalQuestions: 100,
     totalMarks: 100,
     sections: ['Quantitative Aptitude', 'Reasoning Ability', 'English Language'],
     attemptsCount: 14250,
     isFreeSample: true,
+    isPublished: true,
   },
   {
     id: 'test-sbi-clerk-full-01',
     title: 'SBI Clerk Prelims All-India Live Mock',
     exam: 'SBI Clerk',
+    phase: 'prelims',
     durationMinutes: 60,
     totalQuestions: 100,
     totalMarks: 100,
     sections: ['Quantitative Aptitude', 'Reasoning Ability', 'English Language'],
     attemptsCount: 28900,
     isFreeSample: true,
+    isPublished: true,
   },
   {
     id: 'test-rbi-assist-full-01',
     title: 'RBI Assistant Prelims Speed Booster Mock',
     exam: 'RBI Assistant',
+    phase: 'prelims',
     durationMinutes: 60,
     totalQuestions: 100,
     totalMarks: 100,
     sections: ['Quantitative Aptitude', 'Reasoning Ability', 'English Language', 'General & Banking Awareness'],
     attemptsCount: 9800,
     isFreeSample: false,
+    isPublished: true,
   },
   {
     id: 'test-rrb-clerk-full-01',
     title: 'RRB Office Assistant (Clerk) Full Test 1',
     exam: 'RRB Clerk',
+    phase: 'prelims',
     durationMinutes: 45,
     totalQuestions: 80,
     totalMarks: 80,
     sections: ['Quantitative Aptitude', 'Reasoning Ability'],
     attemptsCount: 18200,
     isFreeSample: true,
+    isPublished: true,
   },
 ];
+
+export const mockTestsList = initialMockTests;
 
 export const sampleStudentProfile: UserProfile = {
   id: 'usr-student-001',

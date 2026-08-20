@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { initialMockTests, initialQuestions } from '../data/mockData';
+import { SectionResultData, TestAttemptResult } from '../types';
+import { QuestionReviewModal } from '../components/QuestionReviewModal';
 import {
   Trophy,
   Target,
@@ -11,24 +12,29 @@ import {
   HelpCircle,
   RotateCcw,
   ArrowLeft,
-  FileSpreadsheet,
-  BarChart2
+  FileSpreadsheet
 } from 'lucide-react';
 
 export const ResultScreen: React.FC = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { testAttempts } = useApp();
 
-  const attempt = useMemo(() => {
-    return testAttempts.find((a) => a.attemptId === attemptId) || testAttempts[0];
-  }, [testAttempts, attemptId]);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  // Retrieve attempt from state location or fallback to context list
+  const attempt = useMemo<TestAttemptResult | null>(() => {
+    if (location.state?.result) return location.state.result as TestAttemptResult;
+    const found = testAttempts.find((a) => a.attemptId === attemptId || a.testId === attemptId);
+    return found || testAttempts[0] || null;
+  }, [testAttempts, attemptId, location.state]);
 
   if (!attempt) {
     return (
       <div className="p-12 text-center">
-        <h2 className="text-lg font-bold">Attempt not found</h2>
-        <Link to="/dashboard" className="text-xs text-[#0F4C81] underline mt-2 block">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Attempt result record not found</h2>
+        <Link to="/dashboard" className="text-xs text-[#0F4C81] underline mt-2 inline-block">
           Back to Dashboard
         </Link>
       </div>
@@ -43,12 +49,11 @@ export const ResultScreen: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-
       {/* Top Banner */}
       <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0F4C81] to-[#2563EB] text-white shadow-xl space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <span className="px-3 py-1 rounded-lg bg-white/15 text-xs font-bold uppercase tracking-wider">
-            {attempt.exam} Result Report
+            {attempt.exam} Verified Scorecard
           </span>
           <span className="text-xs text-blue-100 font-medium">{attempt.dateCompleted}</span>
         </div>
@@ -59,7 +64,7 @@ export const ResultScreen: React.FC = () => {
           <div>
             <div className="text-xs text-blue-100 font-semibold uppercase">Total Score</div>
             <div className="text-3xl font-extrabold font-mono mt-0.5">
-              {attempt.score.toFixed(1)} <span className="text-xs font-normal text-blue-200">/ {attempt.maxScore}</span>
+              {attempt.score.toFixed(2)} <span className="text-xs font-normal text-blue-200">/ {attempt.maxScore}</span>
             </div>
           </div>
 
@@ -141,17 +146,16 @@ export const ResultScreen: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-[var(--border-color)] font-semibold text-[var(--text-main)]">
               {Object.entries(attempt.sectionBreakdown).map(([secName, secData]) => {
-                const totalAns = secData.correct + secData.wrong;
-                const secAcc = totalAns > 0 ? (secData.correct / totalAns) * 100 : 0;
+                const sec = secData as SectionResultData;
                 return (
                   <tr key={secName} className="hover:bg-[var(--bg-main)]">
-                    <td className="py-3.5 px-4 font-bold">{secName}</td>
-                    <td className="py-3.5 px-4">{secData.total}</td>
-                    <td className="py-3.5 px-4 text-emerald-600">{secData.correct}</td>
-                    <td className="py-3.5 px-4 text-rose-600">{secData.wrong}</td>
-                    <td className="py-3.5 px-4 font-mono font-bold">{secData.score.toFixed(2)}</td>
+                    <td className="py-3.5 px-4 font-bold">{sec.sectionName || secName}</td>
+                    <td className="py-3.5 px-4">{sec.totalQuestions}</td>
+                    <td className="py-3.5 px-4 text-emerald-600">{sec.correct}</td>
+                    <td className="py-3.5 px-4 text-rose-600">{sec.incorrect}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold">{sec.score.toFixed(2)}</td>
                     <td className="py-3.5 px-4 font-mono text-[#0F4C81] dark:text-[#38BDF8]">
-                      {secAcc.toFixed(1)}%
+                      {sec.accuracy.toFixed(1)}%
                     </td>
                   </tr>
                 );
@@ -172,10 +176,10 @@ export const ResultScreen: React.FC = () => {
 
         <div className="w-full sm:w-auto flex items-center gap-3">
           <button
-            onClick={() => navigate('/questions')}
+            onClick={() => setIsReviewOpen(true)}
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#0F4C81] hover:bg-[#0B3A64] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
           >
-            Review Solutions
+            Review Solutions & Explanations
           </button>
           <button
             onClick={() => navigate(`/mock-test/${attempt.testId}`)}
@@ -186,6 +190,16 @@ export const ResultScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* Question Review Modal */}
+      {attempt.questionsWithAnswers && (
+        <QuestionReviewModal
+          isOpen={isReviewOpen}
+          onClose={() => setIsReviewOpen(false)}
+          questions={attempt.questionsWithAnswers}
+          userAnswers={attempt.userAnswers}
+          testTitle={attempt.testTitle}
+        />
+      )}
     </div>
   );
 };

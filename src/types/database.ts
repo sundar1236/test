@@ -65,6 +65,8 @@ export interface Database {
           topic_id: string;
           source_id: string | null;
           question_text: string;
+          question_hash?: string | null;
+          normalized_text?: string | null;
           difficulty: DifficultyLevel;
           explanation: string | null;
           status: QuestionStatus;
@@ -74,6 +76,42 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['questions']['Row'], 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['questions']['Insert']>;
+      };
+      import_batches: {
+        Row: {
+          id: string;
+          batch_number: string;
+          importer_id: string | null;
+          importer_name: string | null;
+          file_name: string;
+          file_format: 'csv' | 'json';
+          total_records: number;
+          success_count: number;
+          failure_count: number;
+          duplicate_count: number;
+          status: 'preview' | 'processing' | 'completed' | 'failed' | 'rolled_back';
+          summary: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['import_batches']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['import_batches']['Insert']>;
+      };
+      import_records: {
+        Row: {
+          id: string;
+          batch_id: string;
+          row_number: number;
+          question_id: string | null;
+          raw_data: Record<string, unknown>;
+          status: 'success' | 'failed' | 'duplicate_skipped' | 'duplicate_merged' | 'duplicate_overwritten' | 'pending_review';
+          duplicate_match_id: string | null;
+          duplicate_type: 'exact' | 'near' | 'potential' | null;
+          error_message: string | null;
+          field_errors: Array<{ field: string; message: string }> | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['import_records']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['import_records']['Insert']>;
       };
       question_options: {
         Row: {
@@ -201,3 +239,5 @@ export type QuestionOptionModel = Database['public']['Tables']['question_options
 export type MockTestModel = Database['public']['Tables']['mock_tests']['Row'];
 export type TestAttemptModel = Database['public']['Tables']['test_attempts']['Row'];
 export type BookmarkModel = Database['public']['Tables']['bookmarks']['Row'];
+export type ImportBatchModel = Database['public']['Tables']['import_batches']['Row'];
+export type ImportRecordModel = Database['public']['Tables']['import_records']['Row'];
