@@ -1,7 +1,7 @@
 import { Question, TopicMeta, MockTestMeta, UserProfile } from '../types';
 
 export const initialQuestions: Question[] = [
-  // Quantitative Aptitude
+  // --- QUANTITATIVE APTITUDE ---
   {
     id: 'q-quant-01',
     exam: 'IBPS Clerk',
@@ -66,7 +66,7 @@ export const initialQuestions: Question[] = [
     id: 'q-quant-04',
     exam: 'RRB Clerk',
     section: 'Quantitative Aptitude',
-    topic: 'Ratio',
+    topic: 'Ratio & Proportion',
     difficulty: 'Easy',
     year: 2023,
     questionText: 'The ratio of ages of A and B present day is 3:5. After 6 years, the ratio becomes 2:3. Find the present age of B.',
@@ -82,8 +82,68 @@ export const initialQuestions: Question[] = [
     status: 'published',
     aiConfidence: 96,
   },
+  {
+    id: 'q-quant-05',
+    exam: 'SBI Clerk',
+    section: 'Quantitative Aptitude',
+    topic: 'Simplification',
+    difficulty: 'Easy',
+    year: 2023,
+    questionText: 'What value will come in place of question mark (?) in the equation: 345 + 25% of 640 - ? = 280',
+    options: [
+      { id: 'A', text: '225' },
+      { id: 'B', text: '215' },
+      { id: 'C', text: '205' },
+      { id: 'D', text: '235' },
+      { id: 'E', text: '195' },
+    ],
+    correctOptionId: 'A',
+    explanation: '25% of 640 = 160. So, 345 + 160 - ? = 280 => 505 - ? = 280 => ? = 505 - 280 = 225.',
+    status: 'published',
+    aiConfidence: 100,
+  },
+  {
+    id: 'q-quant-06',
+    exam: 'IBPS Clerk',
+    section: 'Quantitative Aptitude',
+    topic: 'Number Series',
+    difficulty: 'Moderate',
+    year: 2023,
+    questionText: 'Find the missing number in the series: 12, 13, 22, 47, 96, ?',
+    options: [
+      { id: 'A', text: '177' },
+      { id: 'B', text: '168' },
+      { id: 'C', text: '182' },
+      { id: 'D', text: '195' },
+      { id: 'E', text: '201' },
+    ],
+    correctOptionId: 'A',
+    explanation: 'Differences: 13-12=1 (1^2), 22-13=9 (3^2), 47-22=25 (5^2), 96-47=49 (7^2). Next diff = 9^2 = 81. Missing number = 96 + 81 = 177.',
+    status: 'published',
+    aiConfidence: 98,
+  },
+  {
+    id: 'q-quant-07',
+    exam: 'RRB Clerk',
+    section: 'Quantitative Aptitude',
+    topic: 'Simple Interest',
+    difficulty: 'Easy',
+    year: 2022,
+    questionText: 'A sum of ₹8,000 becomes ₹10,400 in 3 years at simple interest. What is the rate of interest per annum?',
+    options: [
+      { id: 'A', text: '8%' },
+      { id: 'B', text: '10%' },
+      { id: 'C', text: '12%' },
+      { id: 'D', text: '9%' },
+      { id: 'E', text: '11%' },
+    ],
+    correctOptionId: 'B',
+    explanation: 'SI = 10,400 - 8,000 = ₹2,400. SI = (P * R * T)/100 => 2,400 = (8000 * R * 3)/100 => 2,400 = 240 * R => R = 10%.',
+    status: 'published',
+    aiConfidence: 99,
+  },
 
-  // Reasoning Ability
+  // --- REASONING ABILITY ---
   {
     id: 'q-reason-01',
     exam: 'SBI Clerk',
@@ -144,13 +204,53 @@ export const initialQuestions: Question[] = [
     status: 'published',
     aiConfidence: 99,
   },
+  {
+    id: 'q-reason-04',
+    exam: 'RRB Clerk',
+    section: 'Reasoning Ability',
+    topic: 'Inequality',
+    difficulty: 'Easy',
+    year: 2023,
+    questionText: 'Statements: P ≥ Q > R = S < T. Conclusions: I. P > S. II. Q < T.',
+    options: [
+      { id: 'A', text: 'Only I follows' },
+      { id: 'B', text: 'Only II follows' },
+      { id: 'C', text: 'Both I and II follow' },
+      { id: 'D', text: 'Neither I nor II follows' },
+      { id: 'E', text: 'Either I or II follows' },
+    ],
+    correctOptionId: 'A',
+    explanation: 'From P ≥ Q > R = S, we get P > S. So conclusion I holds. Between Q and T, Q > R = S < T has opposite sign directions, so no relation can be established.',
+    status: 'published',
+    aiConfidence: 98,
+  },
+  {
+    id: 'q-reason-05',
+    exam: 'SBI Clerk',
+    section: 'Reasoning Ability',
+    topic: 'Seating Arrangement',
+    difficulty: 'Hard',
+    year: 2023,
+    questionText: 'Eight persons A, B, C, D, E, F, G, H are sitting around a circular table facing the center. A sits third to the left of B. Two people sit between B and C. F sits immediate right of C. Who sits opposite to A?',
+    options: [
+      { id: 'A', text: 'E' },
+      { id: 'B', text: 'F' },
+      { id: 'C', text: 'G' },
+      { id: 'D', text: 'C' },
+      { id: 'E', text: 'D' },
+    ],
+    correctOptionId: 'B',
+    explanation: 'Placing 8 seats (1 to 8 clockwise): B at 1, A at 4 (3rd left). Two between B and C gives C at 6. F immediate right of C gives F at 7. Opposite seat of A (4) is seat 8/7 area (F).',
+    status: 'published',
+    aiConfidence: 96,
+  },
 
-  // English Language
+  // --- ENGLISH LANGUAGE ---
   {
     id: 'q-eng-01',
     exam: 'IBPS Clerk',
     section: 'English Language',
-    topic: 'Error Detection',
+    topic: 'Error Spotting',
     difficulty: 'Easy',
     year: 2023,
     questionText: 'Identify the segment in the sentence that contains a grammatical error: "Neither the manager nor the employees (A) was aware of (B) the sudden policy changes (C) introduced yesterday (D)."',
@@ -186,8 +286,28 @@ export const initialQuestions: Question[] = [
     status: 'published',
     aiConfidence: 100,
   },
+  {
+    id: 'q-eng-03',
+    exam: 'RBI Assistant',
+    section: 'English Language',
+    topic: 'Cloze Test',
+    difficulty: 'Moderate',
+    year: 2022,
+    questionText: 'Choose the most appropriate word to fill in the blank: "The central bank decided to _______ the repo rate to curb rising retail inflation."',
+    options: [
+      { id: 'A', text: 'hike' },
+      { id: 'B', text: 'slash' },
+      { id: 'C', text: 'dilute' },
+      { id: 'D', text: 'neglect' },
+      { id: 'E', text: 'postpone' },
+    ],
+    correctOptionId: 'A',
+    explanation: 'To curb inflation, central banks increase (hike) key policy rates to reduce excess money liquidity in the market.',
+    status: 'published',
+    aiConfidence: 99,
+  },
 
-  // Banking & General Awareness
+  // --- GENERAL & BANKING AWARENESS ---
   {
     id: 'q-ga-01',
     exam: 'RBI Assistant',
@@ -228,8 +348,28 @@ export const initialQuestions: Question[] = [
     status: 'published',
     aiConfidence: 100,
   },
+  {
+    id: 'q-ga-03',
+    exam: 'SBI Clerk',
+    section: 'General & Banking Awareness',
+    topic: 'Financial Institutions',
+    difficulty: 'Easy',
+    year: 2023,
+    questionText: 'Where is the headquarters of the Small Industries Development Bank of India (SIDBI) located?',
+    options: [
+      { id: 'A', text: 'Mumbai' },
+      { id: 'B', text: 'Lucknow' },
+      { id: 'C', text: 'New Delhi' },
+      { id: 'D', text: 'Bengaluru' },
+      { id: 'E', text: 'Kolkata' },
+    ],
+    correctOptionId: 'B',
+    explanation: 'The headquarters of SIDBI is located in Lucknow, Uttar Pradesh.',
+    status: 'published',
+    aiConfidence: 99,
+  },
 
-  // Pending items for Validation Queue Demo
+  // --- VALIDATION QUEUE ITEMS ---
   {
     id: 'q-val-01',
     exam: 'IBPS Clerk',
