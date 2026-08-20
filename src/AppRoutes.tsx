@@ -39,6 +39,10 @@ export const AppRoutes: React.FC = () => {
         path="/mock-test/:testId"
         element={role === 'guest' ? <Navigate to="/" replace /> : <ExamSimulatorScreen />}
       />
+      <Route
+        path="/exam/:testId"
+        element={role === 'guest' ? <Navigate to="/" replace /> : <ExamSimulatorScreen />}
+      />
 
       {/* Main Layout routes */}
       <Route element={<MainLayout />}>
