@@ -1,18 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseUrl =
+  rawUrl && !rawUrl.includes('placeholder-project')
+    ? rawUrl
+    : 'https://klzpmakufpfhjbokzaof.supabase.co';
 
-if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-  console.warn(
-    'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not configured. Using placeholder client.'
-  );
-}
+const rawKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const supabaseKey =
+  rawKey && !rawKey.includes('placeholder')
+    ? rawKey
+    : 'sb_publishable_YeLrbDTr4sqcvnXb5dn7pQ_NwORCvoD';
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storageKey: 'bank_clerk_supabase_auth_token',
   },
 });
