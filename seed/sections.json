@@ -1,0 +1,6 @@
+[
+  { "code": "QUANT", "name": "Quantitative Aptitude" },
+  { "code": "REASONING", "name": "Reasoning Ability" },
+  { "code": "ENGLISH", "name": "English Language" },
+  { "code": "GA", "name": "General & Banking Awareness" }
+]

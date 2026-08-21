@@ -1,0 +1,17 @@
+[
+  {
+    "exam_code": "SBI_CLERK",
+    "section_code": "QUANT",
+    "topic_title": "Percentage & Ratio",
+    "difficulty": "easy",
+    "question_text": "If 40% of a number is equal to two-fifths of another number, what is the ratio between the first and second number?",
+    "options": [
+      { "key": "A", "text": "1:1", "is_correct": true },
+      { "key": "B", "text": "2:3", "is_correct": false },
+      { "key": "C", "text": "3:4", "is_correct": false },
+      { "key": "D", "text": "4:5", "is_correct": false },
+      { "key": "E", "text": "1:2", "is_correct": false }
+    ],
+    "explanation": "40% of X = (2/5)X. Given (2/5)X = (2/5)Y, so X:Y = 1:1."
+  }
+]
