@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { useApp } from '../context/AppContext';
-import { BookOpen, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Loader2, ShieldCheck, User } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -29,8 +29,8 @@ export const Login: React.FC = () => {
       const res = await authService.signIn(email.trim(), password);
       if (res?.user) {
         await refreshProfile();
-        // Redirect based on database profile role
-        if (role === 'admin' || role === 'super_admin') {
+        // Redirect purely based on resolved database role from AppContext
+        if (role === 'admin' || role === 'super_admin' || role === 'question_reviewer') {
           navigate('/admin/dashboard');
         } else {
           navigate('/dashboard');
@@ -41,16 +41,6 @@ export const Login: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fillQuickAdmin = () => {
-    setEmail('sundhar1301@gmail.com');
-    setPassword('sundar@1236');
-  };
-
-  const fillQuickStudent = () => {
-    setEmail('student@test.com');
-    setPassword('student123');
   };
 
   return (
@@ -68,27 +58,6 @@ export const Login: React.FC = () => {
           <p className="text-xs text-[var(--text-muted)]">
             Access your full mock tests, analytics, and topic question banks.
           </p>
-        </div>
-
-        {/* Quick Credentials Helper Pills */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quick Fill Demo Accounts</div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={fillQuickAdmin}
-              className="py-1.5 px-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-indigo-200 dark:border-indigo-800 transition-colors"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" /> Admin Credentials
-            </button>
-            <button
-              type="button"
-              onClick={fillQuickStudent}
-              className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-200 dark:border-emerald-800 transition-colors"
-            >
-              <User className="w-3.5 h-3.5 text-emerald-600" /> Test Student
-            </button>
-          </div>
         </div>
 
         {/* Error Alert */}
@@ -112,7 +81,7 @@ export const Login: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="sundhar1301@gmail.com"
+                placeholder="email@example.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C81] transition-all"
               />
             </div>

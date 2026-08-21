@@ -4,7 +4,7 @@ import { UserRole } from '../types/database';
 export const authService = {
   async signUp(email: string, pass: string, fullName: string, role: UserRole = 'student') {
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password: pass,
       options: {
         data: { full_name: fullName, role },
@@ -19,12 +19,12 @@ export const authService = {
       try {
         await supabase.from('profiles').upsert({
           id: data.user.id,
-          email,
+          email: email.trim().toLowerCase(),
           full_name: fullName,
           role: role,
         });
       } catch (profileErr) {
-        console.warn('Profile sync non-blocking error:', profileErr);
+        console.warn('Profile sync non-blocking warning:', profileErr);
       }
     }
 
@@ -57,9 +57,11 @@ export const authService = {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
+
     if (error) {
       throw this.formatAuthError(error);
     }
+
     return data;
   },
 
@@ -84,7 +86,10 @@ export const authService = {
   },
 
   formatAuthError(error: any): Error {
-    const msg = error?.message || 'Authentication request failed.';
+    const msg = typeof error === 'string' ? error : error?.message || 'Authentication request failed.';
+    if (msg.includes('Failed to fetch') || error?.name === 'TypeError') {
+      return new Error('Unable to connect to the authentication server. Please check your network connection.');
+    }
     if (msg.includes('Invalid login credentials')) {
       return new Error('Invalid email or password. Please verify your credentials and try again.');
     }
