@@ -10,7 +10,25 @@ export const authService = {
         data: { full_name: fullName, role },
       },
     });
-    if (error) throw error;
+
+    if (error) {
+      throw this.formatAuthError(error);
+    }
+
+    // Explicitly insert into profiles if session user created
+    if (data.user) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email,
+          full_name: fullName,
+          role: role,
+        });
+      } catch (profileErr) {
+        console.warn('Profile sync non-blocking error:', profileErr);
+      }
+    }
+
     return data;
   },
 
@@ -19,13 +37,27 @@ export const authService = {
       email,
       password: pass,
     });
-    if (error) throw error;
+    if (error) {
+      throw this.formatAuthError(error);
+    }
     return data;
   },
 
   async signOut() {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error) {
+      throw this.formatAuthError(error);
+    }
+  },
+
+  async resetPassword(email: string) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      throw this.formatAuthError(error);
+    }
+    return data;
   },
 
   async getSession() {
@@ -40,7 +72,27 @@ export const authService = {
       .select('*')
       .eq('id', userId)
       .single();
-    if (error) throw error;
+
+    if (error && error.code !== 'PGRST116') {
+      console.warn('Profile fetch warning:', error.message);
+    }
     return data;
+  },
+
+  formatAuthError(error: any): Error {
+    const msg = error?.message || 'Authentication request failed.';
+    if (msg.includes('Invalid login credentials')) {
+      return new Error('Invalid email or password. Please verify your credentials and try again.');
+    }
+    if (msg.includes('User already registered')) {
+      return new Error('An account with this email address already exists.');
+    }
+    if (msg.includes('Password should be at least')) {
+      return new Error('Password must be at least 6 characters long.');
+    }
+    if (msg.includes('Email not confirmed')) {
+      return new Error('Please confirm your email address before logging in.');
+    }
+    return new Error(msg);
   },
 };

@@ -3,6 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useApp } from './context/AppContext';
 import { MainLayout } from './components/MainLayout';
 import { LandingPage } from './pages/LandingPage';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { QuestionBank } from './pages/QuestionBank';
 import { TopicTests } from './pages/TopicTests';
@@ -27,70 +30,84 @@ import { CSVImport } from './components/admin/import/CSVImport';
 import { JSONImport } from './components/admin/import/JSONImport';
 import { ImportHistory } from './components/admin/import/ImportHistory';
 import { DuplicateReview } from './components/admin/import/DuplicateReview';
+import { Loader2 } from 'lucide-react';
 
 export const AppRoutes: React.FC = () => {
-  const { role } = useApp();
+  const { role, isLoadingAuth } = useApp();
+
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-main)] text-[var(--text-main)] space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0F4C81]" />
+        <span className="text-sm font-semibold text-[var(--text-muted)]">Verifying session security...</span>
+      </div>
+    );
+  }
 
   const isAdminOrReviewer = role === 'admin' || role === 'super_admin' || role === 'question_reviewer';
+  const isAuthenticated = role !== 'guest';
 
   return (
     <Routes>
       {/* Full screen exam simulator route without sidebar layout */}
       <Route
         path="/mock-test/:testId"
-        element={role === 'guest' ? <Navigate to="/" replace /> : <ExamSimulatorScreen />}
+        element={!isAuthenticated ? <Navigate to="/login" replace /> : <ExamSimulatorScreen />}
       />
       <Route
         path="/exam/:testId"
-        element={role === 'guest' ? <Navigate to="/" replace /> : <ExamSimulatorScreen />}
+        element={!isAuthenticated ? <Navigate to="/login" replace /> : <ExamSimulatorScreen />}
       />
 
       {/* Main Layout routes */}
       <Route element={<MainLayout />}>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/design-system" element={<DesignSystemDoc />} />
 
         {/* Student Routes */}
         <Route
           path="/dashboard"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <StudentDashboard />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <StudentDashboard />}
         />
         <Route
           path="/questions"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <QuestionBank />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <QuestionBank />}
         />
         <Route
           path="/topics"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <TopicTests />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <TopicTests />}
         />
         <Route
           path="/mock-tests"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <MockTestList />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <MockTestList />}
         />
         <Route
           path="/results/:attemptId"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <ResultScreen />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <ResultScreen />}
         />
         <Route
           path="/attempts"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <AttemptHistory />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <AttemptHistory />}
         />
         <Route
           path="/performance"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <PerformanceAnalytics />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <PerformanceAnalytics />}
         />
         <Route
           path="/practice"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <PracticeModeScreen />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <PracticeModeScreen />}
         />
         <Route
           path="/bookmarks"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <BookmarkScreen />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <BookmarkScreen />}
         />
         <Route
           path="/profile"
-          element={role === 'guest' ? <Navigate to="/" replace /> : <ProfileScreen />}
+          element={!isAuthenticated ? <Navigate to="/login" replace /> : <ProfileScreen />}
         />
 
         {/* Admin Routes */}

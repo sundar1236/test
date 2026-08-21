@@ -1,23 +1,15 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { UserRole } from '../types';
-import { Sun, Moon, LogIn, BookOpen } from 'lucide-react';
+import { Sun, Moon, LogIn, BookOpen, LogOut, User as UserIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export const Header: React.FC = () => {
-  const { role, setRole, theme, toggleTheme, userProfile } = useApp();
+  const { role, theme, toggleTheme, userProfile, user, signOut } = useApp();
   const navigate = useNavigate();
 
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newRole = e.target.value as UserRole;
-    setRole(newRole);
-    if (newRole === 'guest') {
-      navigate('/');
-    } else if (newRole === 'admin') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/dashboard');
-    }
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
 
   return (
@@ -42,21 +34,6 @@ export const Header: React.FC = () => {
         {/* Right Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
 
-          {/* Dev Role Switcher Badge */}
-          <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-medium">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 shrink-0"></span>
-            <span className="hidden lg:inline text-[var(--text-muted)]">Role:</span>
-            <select
-              value={role}
-              onChange={handleRoleChange}
-              className="bg-transparent font-bold text-[var(--text-main)] outline-none cursor-pointer capitalize text-xs"
-            >
-              <option value="guest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Guest User</option>
-              <option value="student" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Student</option>
-              <option value="admin" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Admin</option>
-            </select>
-          </div>
-
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -67,33 +44,37 @@ export const Header: React.FC = () => {
           </button>
 
           {/* User Status / Login Quick Actions */}
-          {role === 'guest' ? (
+          {!user || role === 'guest' ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => setRole('student')}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[var(--text-main)] border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-main)] transition-colors"
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[var(--text-main)] border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-main)] transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" /> Sign In
-              </button>
-              <button
-                onClick={() => {
-                  setRole('student');
-                  navigate('/dashboard');
-                }}
+              </Link>
+              <Link
+                to="/register"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#0F4C81] hover:bg-[#0B3A64] rounded-lg shadow-sm transition-colors"
               >
-                Start Free Test
-              </button>
+                Register Free
+              </Link>
             </div>
           ) : (
             <div className="flex items-center gap-2 pl-2 border-l border-[var(--border-color)] shrink-0">
               <div className="w-8 h-8 rounded-full bg-[#0F4C81]/15 text-[#0F4C81] dark:text-[#38BDF8] flex items-center justify-center font-black text-xs border border-[#0F4C81]/30">
-                {userProfile.name.charAt(0)}
+                {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
               </div>
               <div className="hidden md:flex flex-col text-left">
                 <span className="text-xs font-bold text-[var(--text-main)] leading-tight">{userProfile.name}</span>
-                <span className="text-[10px] text-[var(--text-muted)] capitalize font-semibold">{role}</span>
+                <span className="text-[10px] text-[var(--text-muted)] capitalize font-semibold">{role.replace('_', ' ')}</span>
               </div>
+              <button
+                onClick={handleSignOut}
+                title="Sign Out"
+                className="p-2 rounded-lg border border-[var(--border-color)] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors ml-1"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           )}
 

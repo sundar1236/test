@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  --color-banking-blue: #0F4C81;
+  --color-banking-blue-hover: #0B3A64;
+  --color-banking-secondary: #2563EB;
+}
+
 @layer base {
   :root {
     --primary: #0F4C81;

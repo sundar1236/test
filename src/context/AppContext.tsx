@@ -2,13 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserRole, Question, TestAttemptResult, UserProfile, ExamCategory } from '../types';
 import { initialQuestions, sampleStudentProfile } from '../data/mockData';
 import { authService } from '../services/authService';
+import { supabase } from '../lib/supabase';
 
 interface AppContextType {
   role: UserRole;
-  setRole: (role: UserRole) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  bookmarks: string[]; // question ids
+  bookmarks: string[];
   toggleBookmark: (questionId: string) => void;
   questions: Question[];
   addQuestion: (q: Question) => void;
@@ -18,26 +18,125 @@ interface AppContextType {
   userProfile: UserProfile;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   supabaseSession: any;
+  user: any;
+  isLoadingAuth: boolean;
+  signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [supabaseSession, setSupabaseSession] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<UserRole>('guest');
+  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
 
+  const [userProfile, setUserProfileState] = useState<UserProfile>(sampleStudentProfile);
+
+  // Initialize and listen to Supabase Auth State
   useEffect(() => {
-    authService.getSession().then((session) => setSupabaseSession(session)).catch(() => {});
+    let isMounted = true;
+
+    const initAuth = async () => {
+      try {
+        const session = await authService.getSession();
+        if (!isMounted) return;
+
+        setSupabaseSession(session);
+        if (session?.user) {
+          setUser(session.user);
+          await loadUserProfile(session.user.id, session.user);
+        } else {
+          setUser(null);
+          setRole('guest');
+        }
+      } catch (err) {
+        console.warn('Auth initialization fallback:', err);
+      } finally {
+        if (isMounted) setIsLoadingAuth(false);
+      }
+    };
+
+    initAuth();
+
+    // Listen to Auth State Changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      setSupabaseSession(session);
+      if (session?.user) {
+        setUser(session.user);
+        await loadUserProfile(session.user.id, session.user);
+      } else {
+        setUser(null);
+        setRole('guest');
+        setUserProfileState(sampleStudentProfile);
+      }
+      setIsLoadingAuth(false);
+    });
+
+    return () => {
+      isMounted = false;
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
-  const [role, setRoleState] = useState<UserRole>(() => {
-    return (localStorage.getItem('bank_app_role') as UserRole) || 'student';
-  });
-
-  const setRole = (newRole: UserRole) => {
-    setRoleState(newRole);
-    localStorage.setItem('bank_app_role', newRole);
+  const loadUserProfile = async (userId: string, authUser?: any) => {
+    try {
+      const profile = await authService.getCurrentProfile(userId);
+      if (profile) {
+        const resolvedRole = (profile.role as UserRole) || 'student';
+        setRole(resolvedRole);
+        setUserProfileState({
+          name: profile.full_name || authUser?.email?.split('@')[0] || 'User',
+          email: profile.email || authUser?.email || '',
+          targetExam: 'SBI Clerk',
+          joinedDate: new Date(profile.created_at || Date.now()).toLocaleDateString(),
+          testsTaken: 0,
+          averageAccuracy: 0,
+          allIndiaRank: 0,
+        });
+      } else {
+        // Fallback profile if record not yet created in table
+        setRole('student');
+        setUserProfileState({
+          name: authUser?.user_metadata?.full_name || authUser?.email?.split('@')[0] || 'Student User',
+          email: authUser?.email || '',
+          targetExam: 'SBI Clerk',
+          joinedDate: new Date().toLocaleDateString(),
+          testsTaken: 0,
+          averageAccuracy: 0,
+          allIndiaRank: 0,
+        });
+      }
+    } catch {
+      setRole('student');
+    }
   };
 
+  const refreshProfile = async () => {
+    if (user?.id) {
+      await loadUserProfile(user.id, user);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsLoadingAuth(true);
+    try {
+      await authService.signOut();
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    } finally {
+      setSupabaseSession(null);
+      setUser(null);
+      setRole('guest');
+      setUserProfileState(sampleStudentProfile);
+      setIsLoadingAuth(false);
+    }
+  };
+
+  // Theme Management
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('bank_app_theme') as 'light' | 'dark') || 'light';
   });
@@ -56,6 +155,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
+  // Bookmarks
   const [bookmarks, setBookmarks] = useState<string[]>(() => {
     const saved = localStorage.getItem('bank_app_bookmarks');
     return saved ? JSON.parse(saved) : ['q-quant-02', 'q-reason-01'];
@@ -71,6 +171,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // Questions
   const [questions, setQuestions] = useState<Question[]>(() => {
     const saved = localStorage.getItem('bank_app_questions');
     return saved ? JSON.parse(saved) : initialQuestions;
@@ -92,6 +193,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // Test Attempts
   const [testAttempts, setTestAttempts] = useState<TestAttemptResult[]>(() => {
     const saved = localStorage.getItem('bank_app_test_attempts');
     if (saved) return JSON.parse(saved);
@@ -170,11 +272,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const [userProfile, setUserProfileState] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('bank_app_user_profile');
-    return saved ? JSON.parse(saved) : sampleStudentProfile;
-  });
-
   const updateUserProfile = (updated: Partial<UserProfile>) => {
     setUserProfileState((prev) => {
       const newProfile = { ...prev, ...updated };
@@ -187,7 +284,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         role,
-        setRole,
         theme,
         toggleTheme,
         bookmarks,
@@ -200,6 +296,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         userProfile,
         updateUserProfile,
         supabaseSession,
+        user,
+        isLoadingAuth,
+        signOut: handleSignOut,
+        refreshProfile,
       }}
     >
       {children}
