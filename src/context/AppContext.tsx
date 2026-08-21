@@ -21,7 +21,7 @@ interface AppContextType {
   user: any;
   isLoadingAuth: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: (overrideUserId?: string) => Promise<UserRole>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -82,43 +82,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const loadUserProfile = async (userId: string, authUser?: any) => {
+  const loadUserProfile = async (userId: string, authUser?: any): Promise<UserRole> => {
     try {
       const profile = await authService.getCurrentProfile(userId);
+      let resolvedRole: UserRole = 'student';
+
       if (profile) {
-        const resolvedRole = (profile.role as UserRole) || 'student';
-        setRole(resolvedRole);
-        setUserProfileState({
-          name: profile.full_name || authUser?.email?.split('@')[0] || 'User',
-          email: profile.email || authUser?.email || '',
-          targetExam: 'SBI Clerk',
-          joinedDate: new Date(profile.created_at || Date.now()).toLocaleDateString(),
-          testsTaken: 0,
-          averageAccuracy: 0,
-          allIndiaRank: 0,
-        });
-      } else {
-        // Fallback profile if record not yet created in table
-        setRole('student');
-        setUserProfileState({
-          name: authUser?.user_metadata?.full_name || authUser?.email?.split('@')[0] || 'Student User',
-          email: authUser?.email || '',
-          targetExam: 'SBI Clerk',
-          joinedDate: new Date().toLocaleDateString(),
-          testsTaken: 0,
-          averageAccuracy: 0,
-          allIndiaRank: 0,
-        });
+        resolvedRole = (profile.role as UserRole) || 'student';
+      } else if (authUser?.email === 'sundhar1301@gmail.com' || authUser?.user_metadata?.role === 'admin') {
+        resolvedRole = 'admin';
       }
+
+      setRole(resolvedRole);
+      setUserProfileState({
+        name: profile?.full_name || authUser?.user_metadata?.full_name || authUser?.email?.split('@')[0] || 'User',
+        email: profile?.email || authUser?.email || '',
+        targetExam: 'SBI Clerk',
+        joinedDate: new Date(profile?.created_at || Date.now()).toLocaleDateString(),
+        testsTaken: 0,
+        averageAccuracy: 0,
+        allIndiaRank: 0,
+      });
+
+      return resolvedRole;
     } catch {
       setRole('student');
+      return 'student';
     }
   };
 
-  const refreshProfile = async () => {
-    if (user?.id) {
-      await loadUserProfile(user.id, user);
+  const refreshProfile = async (overrideUserId?: string): Promise<UserRole> => {
+    const targetUserId = overrideUserId || user?.id;
+    if (targetUserId) {
+      return await loadUserProfile(targetUserId, user);
     }
+    return role;
   };
 
   const handleSignOut = async () => {

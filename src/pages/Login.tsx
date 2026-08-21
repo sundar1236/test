@@ -11,7 +11,7 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { refreshProfile, role } = useApp();
+  const { refreshProfile } = useApp();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,9 +28,8 @@ export const Login: React.FC = () => {
     try {
       const res = await authService.signIn(email.trim(), password);
       if (res?.user) {
-        await refreshProfile();
-        // Redirect purely based on resolved database role from AppContext
-        if (role === 'admin' || role === 'super_admin' || role === 'question_reviewer') {
+        const resolvedRole = await refreshProfile(res.user.id);
+        if (resolvedRole === 'admin' || resolvedRole === 'super_admin' || resolvedRole === 'question_reviewer') {
           navigate('/admin/dashboard');
         } else {
           navigate('/dashboard');
