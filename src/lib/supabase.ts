@@ -1,18 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL || 'https://klzpmakufpfhjbokzaof.supabase.co';
+  rawUrl && !rawUrl.includes('placeholder-project')
+    ? rawUrl
+    : 'https://klzpmakufpfhjbokzaof.supabase.co';
+
+const rawKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const supabaseKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  'sb_publishable_YeLrbDTr4sqcvnXb5dn7pQ_NwORCvoD';
-
-if (!import.meta.env.VITE_SUPABASE_URL) {
-  console.info(
-    'Supabase production URL active: https://klzpmakufpfhjbokzaof.supabase.co'
-  );
-}
+  rawKey && !rawKey.includes('placeholder')
+    ? rawKey
+    : 'sb_publishable_YeLrbDTr4sqcvnXb5dn7pQ_NwORCvoD';
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
