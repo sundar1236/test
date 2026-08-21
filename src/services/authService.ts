@@ -15,7 +15,6 @@ export const authService = {
       throw this.formatAuthError(error);
     }
 
-    // Explicitly insert into profiles if session user created
     if (data.user) {
       try {
         await supabase.from('profiles').upsert({
@@ -33,13 +32,17 @@ export const authService = {
   },
 
   async signIn(email: string, pass: string) {
+    const cleanEmail = email.trim().toLowerCase();
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: cleanEmail,
       password: pass,
     });
+
     if (error) {
       throw this.formatAuthError(error);
     }
+
     return data;
   },
 
@@ -76,6 +79,7 @@ export const authService = {
     if (error && error.code !== 'PGRST116') {
       console.warn('Profile fetch warning:', error.message);
     }
+
     return data;
   },
 

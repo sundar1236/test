@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
-import { BookOpen, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { BookOpen, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Loader2, ShieldCheck, User } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const { refreshProfile, role } = useApp();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,8 +28,13 @@ export const Login: React.FC = () => {
     try {
       const res = await authService.signIn(email.trim(), password);
       if (res?.user) {
-        // AppContext listener will handle profile resolution & navigation
-        navigate('/dashboard');
+        await refreshProfile();
+        // Redirect based on database profile role
+        if (role === 'admin' || role === 'super_admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Login failed. Please check your credentials.');
@@ -36,9 +43,19 @@ export const Login: React.FC = () => {
     }
   };
 
+  const fillQuickAdmin = () => {
+    setEmail('sundhar1301@gmail.com');
+    setPassword('sundar@1236');
+  };
+
+  const fillQuickStudent = () => {
+    setEmail('student@test.com');
+    setPassword('student123');
+  };
+
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[var(--bg-main)]">
-      <div className="max-w-md w-full space-y-8 bg-[var(--bg-card)] p-8 rounded-2xl border border-[var(--border-color)] shadow-xl">
+      <div className="max-w-md w-full space-y-6 bg-[var(--bg-card)] p-8 rounded-2xl border border-[var(--border-color)] shadow-xl">
 
         {/* Brand Header */}
         <div className="text-center space-y-3">
@@ -53,6 +70,27 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
+        {/* Quick Credentials Helper Pills */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quick Fill Demo Accounts</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={fillQuickAdmin}
+              className="py-1.5 px-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-indigo-200 dark:border-indigo-800 transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" /> Admin Credentials
+            </button>
+            <button
+              type="button"
+              onClick={fillQuickStudent}
+              className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-200 dark:border-emerald-800 transition-colors"
+            >
+              <User className="w-3.5 h-3.5 text-emerald-600" /> Test Student
+            </button>
+          </div>
+        </div>
+
         {/* Error Alert */}
         {errorMessage && (
           <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-start gap-2.5 text-xs text-rose-800 dark:text-rose-300">
@@ -62,7 +100,7 @@ export const Login: React.FC = () => {
         )}
 
         {/* Login Form */}
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-xs font-bold text-[var(--text-main)] uppercase tracking-wider mb-1.5">
               Email Address
@@ -74,7 +112,7 @@ export const Login: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@example.com"
+                placeholder="sundhar1301@gmail.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C81] transition-all"
               />
             </div>
