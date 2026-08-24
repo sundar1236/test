@@ -1,14 +1,15 @@
 import { supabase } from '../lib/supabase';
 import { Question } from '../types';
-import { mockQuestions } from '../data/mockData';
 
-const BOOKMARKS_LOCAL_KEY = 'bank_app_bookmarks';
+const BOOKMARKS_LOCAL_PREFIX = 'bank_app_bookmarks_';
 
 export const bookmarkService = {
   /**
-   * Fetch bookmarked question IDs for a user with DB & local storage sync
+   * Fetch bookmarked question IDs for the authenticated user
    */
-  async getBookmarkedQuestionIds(userId: string = 'usr-student-1'): Promise<string[]> {
+  async getBookmarkedQuestionIds(userId: string): Promise<string[]> {
+    if (!userId) return [];
+
     try {
       const { data, error } = await supabase
         .from('bookmarks')
@@ -17,21 +18,23 @@ export const bookmarkService = {
 
       if (!error && data) {
         const ids = data.map((b) => b.question_id);
-        localStorage.setItem(BOOKMARKS_LOCAL_KEY, JSON.stringify(ids));
+        localStorage.setItem(`${BOOKMARKS_LOCAL_PREFIX}${userId}`, JSON.stringify(ids));
         return ids;
       }
     } catch {
       // Fallback
     }
 
-    const saved = localStorage.getItem(BOOKMARKS_LOCAL_KEY);
-    return saved ? JSON.parse(saved) : ['q-quant-02', 'q-reason-01'];
+    const saved = localStorage.getItem(`${BOOKMARKS_LOCAL_PREFIX}${userId}`);
+    return saved ? JSON.parse(saved) : [];
   },
 
   /**
-   * Toggle bookmark status for a question
+   * Toggle bookmark status for a question owned by the authenticated user
    */
-  async toggleBookmark(questionId: string, userId: string = 'usr-student-1'): Promise<string[]> {
+  async toggleBookmark(questionId: string, userId: string): Promise<string[]> {
+    if (!userId) return [];
+
     const currentIds = await this.getBookmarkedQuestionIds(userId);
     const isBookmarked = currentIds.includes(questionId);
 
@@ -59,7 +62,7 @@ export const bookmarkService = {
       }
     }
 
-    localStorage.setItem(BOOKMARKS_LOCAL_KEY, JSON.stringify(updatedIds));
+    localStorage.setItem(`${BOOKMARKS_LOCAL_PREFIX}${userId}`, JSON.stringify(updatedIds));
     return updatedIds;
   },
 
@@ -67,15 +70,16 @@ export const bookmarkService = {
    * Get full question models for bookmarked IDs with optional filter parameters
    */
   async getBookmarkedQuestions(
-    userId: string = 'usr-student-1',
+    userId: string,
     filters?: { exam?: string; section?: string; topic?: string }
   ): Promise<Question[]> {
+    if (!userId) return [];
+
     const ids = await this.getBookmarkedQuestionIds(userId);
     if (ids.length === 0) return [];
 
     let questions: Question[] = [];
 
-    // Try DB fetch
     try {
       const { data, error } = await supabase
         .from('questions')
@@ -100,11 +104,7 @@ export const bookmarkService = {
         }));
       }
     } catch {
-      // Fallback
-    }
-
-    if (questions.length === 0) {
-      questions = mockQuestions.filter((q) => ids.includes(q.id));
+      // Return empty array on connection fallback for clean student state
     }
 
     // Apply filtering

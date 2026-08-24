@@ -1,12 +1,31 @@
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../types/database';
 
+/**
+ * Utility to compute environment-aware authentication redirect URLs
+ */
+export const getAuthRedirectUrl = (path: string = '/'): string => {
+  const isProduction =
+    window.location.hostname === 'mocktesttrial.netlify.app' ||
+    import.meta.env.MODE === 'production';
+
+  const baseUrl = isProduction
+    ? 'https://mocktesttrial.netlify.app'
+    : window.location.origin;
+
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${cleanPath}`;
+};
+
 export const authService = {
   async signUp(email: string, pass: string, fullName: string, role: UserRole = 'student') {
+    const emailRedirectTo = getAuthRedirectUrl('/login');
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password: pass,
       options: {
+        emailRedirectTo,
         data: { full_name: fullName, role },
       },
     });
@@ -54,8 +73,10 @@ export const authService = {
   },
 
   async resetPassword(email: string) {
+    const redirectTo = getAuthRedirectUrl('/reset-password');
+
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo,
     });
 
     if (error) {
@@ -63,6 +84,33 @@ export const authService = {
     }
 
     return data;
+  },
+
+  async deleteAccount(): Promise<void> {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+
+    if (!userId) {
+      throw new Error('No active user session found to perform account deletion.');
+    }
+
+    // Call secure database RPC function to delete user data & auth record
+    const { error: rpcError } = await supabase.rpc('delete_user_account');
+
+    if (rpcError) {
+      // Fallback: Delete application profile & user-owned rows directly via RLS
+      try {
+        await supabase.from('bookmarks').delete().eq('user_id', userId);
+        await supabase.from('user_topic_progress').delete().eq('user_id', userId);
+        await supabase.from('test_attempts').delete().eq('user_id', userId);
+        await supabase.from('profiles').delete().eq('id', userId);
+      } catch (err) {
+        console.warn('Manual user row cleanup warning:', err);
+      }
+    }
+
+    // Sign out user session completely
+    await this.signOut();
   },
 
   async getSession() {
