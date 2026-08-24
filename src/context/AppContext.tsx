@@ -85,13 +85,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadUserProfile = async (userId: string, authUser?: any): Promise<UserRole> => {
     try {
       const profile = await authService.getCurrentProfile(userId);
-      let resolvedRole: UserRole = 'student';
-
-      if (profile) {
-        resolvedRole = (profile.role as UserRole) || 'student';
-      } else if (authUser?.email === 'sundhar1301@gmail.com' || authUser?.user_metadata?.role === 'admin') {
-        resolvedRole = 'admin';
-      }
+      const resolvedRole: UserRole = (profile?.role as UserRole) || 'student';
 
       setRole(resolvedRole);
       setUserProfileState({

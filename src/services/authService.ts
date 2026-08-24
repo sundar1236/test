@@ -1,9 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../types/database';
 
-/**
- * Utility to compute environment-aware authentication redirect URLs
- */
 export const getAuthRedirectUrl = (path: string = '/'): string => {
   const isProduction =
     window.location.hostname === 'mocktesttrial.netlify.app' ||
@@ -50,9 +47,36 @@ export const authService = {
     return data;
   },
 
-  async signIn(email: string, pass: string) {
-    const cleanEmail = email.trim().toLowerCase();
+  async signIn(identifier: string, pass: string) {
+    let cleanEmail = identifier.trim().toLowerCase();
 
+    // Map username aliases to email addresses
+    if (!cleanEmail.includes('@')) {
+      if (cleanEmail === 'admin' || cleanEmail === 'sundhar') {
+        cleanEmail = 'sundhar1301@gmail.com';
+      } else if (cleanEmail === 'student' || cleanEmail === 'test') {
+        cleanEmail = 'student@test.com';
+      } else {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('email')
+            .ilike('full_name', `%${cleanEmail}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (data?.email) {
+            cleanEmail = data.email;
+          } else {
+            cleanEmail = `${cleanEmail}@example.com`;
+          }
+        } catch {
+          cleanEmail = `${cleanEmail}@example.com`;
+        }
+      }
+    }
+
+    // Authenticate securely against Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: pass,
@@ -94,11 +118,9 @@ export const authService = {
       throw new Error('No active user session found to perform account deletion.');
     }
 
-    // Call secure database RPC function to delete user data & auth record
     const { error: rpcError } = await supabase.rpc('delete_user_account');
 
     if (rpcError) {
-      // Fallback: Delete application profile & user-owned rows directly via RLS
       try {
         await supabase.from('bookmarks').delete().eq('user_id', userId);
         await supabase.from('user_topic_progress').delete().eq('user_id', userId);
@@ -109,7 +131,6 @@ export const authService = {
       }
     }
 
-    // Sign out user session completely
     await this.signOut();
   },
 
@@ -139,7 +160,7 @@ export const authService = {
       return new Error('Unable to connect to the authentication server. Please check your network connection.');
     }
     if (msg.includes('Invalid login credentials')) {
-      return new Error('Invalid email or password. Please verify your credentials and try again.');
+      return new Error('Invalid username, email, or password. Please verify your credentials and try again.');
     }
     if (msg.includes('User already registered')) {
       return new Error('An account with this email address already exists.');

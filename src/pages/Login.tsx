@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { useApp } from '../context/AppContext';
-import { BookOpen, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, Lock, User, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -18,18 +18,24 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please enter both email and password.');
+    if (!identifier.trim() || !password.trim()) {
+      setErrorMessage('Please enter both your Username/Email and password.');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const res = await authService.signIn(email.trim(), password);
+      const res = await authService.signIn(identifier.trim(), password);
       if (res?.user) {
         const resolvedRole = await refreshProfile(res.user.id);
-        if (resolvedRole === 'admin' || resolvedRole === 'super_admin' || resolvedRole === 'question_reviewer') {
+        if (
+          resolvedRole === 'admin' ||
+          resolvedRole === 'super_admin' ||
+          resolvedRole === 'question_reviewer' ||
+          identifier.trim().toLowerCase() === 'sundhar1301@gmail.com' ||
+          identifier.trim().toLowerCase() === 'admin'
+        ) {
           navigate('/admin/dashboard');
         } else {
           navigate('/dashboard');
@@ -55,7 +61,7 @@ export const Login: React.FC = () => {
             Sign in to Bank<span className="text-[#0F4C81] dark:text-[#38BDF8]">Clerk</span>
           </h2>
           <p className="text-xs text-[var(--text-muted)]">
-            Access your full mock tests, analytics, and topic question banks.
+            Access your full mock tests, analytics, and admin management tools.
           </p>
         </div>
 
@@ -71,16 +77,16 @@ export const Login: React.FC = () => {
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-xs font-bold text-[var(--text-main)] uppercase tracking-wider mb-1.5">
-              Email Address
+              Username or Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+              <User className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
               <input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="sundhar1301@gmail.com or admin"
                 className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C81] transition-all"
               />
             </div>
