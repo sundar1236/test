@@ -3,19 +3,16 @@ import { useApp } from '../context/AppContext';
 import { initialMockTests } from '../data/mockData';
 import {
   HelpCircle,
-  FileCheck2,
-  Users,
   CheckCircle2,
-  TrendingUp,
   Plus,
-  Upload,
   FolderKanban,
   FileText,
   Clock,
   Archive,
-  Eye,
   CheckSquare,
-  History
+  History,
+  Edit,
+  Play
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -31,18 +28,18 @@ export const AdminDashboard: React.FC = () => {
   const archivedCount = questions.filter((q) => q.status === 'rejected' || q.status === 'archived').length;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[var(--text-main)] tracking-tight">Operational Admin Control Panel</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            Question lifecycle management, metadata configuration, AI validation queue, and audit trails.
+            Exam series creation, question lifecycle management, metadata configuration, AI validation queue, and audit trails.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => navigate('/admin/categories')}
             className="px-4 py-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-card)] font-bold text-xs transition-colors flex items-center gap-1.5"
@@ -50,10 +47,10 @@ export const AdminDashboard: React.FC = () => {
             <FolderKanban className="w-4 h-4 text-[#0F4C81] dark:text-[#38BDF8]" /> Metadata & Topics
           </button>
           <button
-            onClick={() => navigate('/admin/validation')}
-            className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5"
+            onClick={() => navigate('/admin/exam-builder')}
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5"
           >
-            <CheckCircle2 className="w-4 h-4" /> Validation Queue ({reviewCount})
+            <Plus className="w-4 h-4" /> Create Exam / Mock Test
           </button>
           <button
             onClick={() => navigate('/admin/questions')}
@@ -61,6 +58,60 @@ export const AdminDashboard: React.FC = () => {
           >
             <Plus className="w-4 h-4" /> Add Question
           </button>
+        </div>
+      </div>
+
+      {/* Mock Test Series Management & Edit Table */}
+      <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xs space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-base font-extrabold text-[var(--text-main)] flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#0F4C81] dark:text-[#38BDF8]" /> Active Exam Series & Live Mock Tests
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Edit exam configurations, section durations, question counts, and marking rules.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/admin/exam-builder')}
+            className="px-3 py-1.5 bg-[#0F4C81] text-white font-extrabold text-xs rounded-xl flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" /> Create Exam
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {initialMockTests.map((test) => (
+            <div
+              key={test.id}
+              className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-[#0F4C81]/15 text-[#0F4C81] dark:text-[#38BDF8]">
+                    {test.exam}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)] font-mono">{test.durationMinutes} Mins • {test.totalQuestions} Qs • {test.totalMarks} Marks</span>
+                </div>
+                <h3 className="font-bold text-sm text-[var(--text-main)]">{test.title}</h3>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => navigate(`/admin/exam-builder/${test.id}`)}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-main)] hover:bg-[var(--bg-main)] text-xs font-bold flex items-center gap-1 transition-colors"
+                >
+                  <Edit className="w-3.5 h-3.5 text-[#0F4C81]" /> Edit Exam
+                </button>
+                <button
+                  onClick={() => navigate(`/mock-test/${test.id}`)}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-xs font-bold flex items-center gap-1"
+                >
+                  <Play className="w-3.5 h-3.5" /> Preview
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -178,47 +229,6 @@ export const AdminDashboard: React.FC = () => {
           </button>
         </div>
 
-      </div>
-
-      {/* Operational Activity Feed */}
-      <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold text-base text-[var(--text-main)] flex items-center gap-2">
-            <History className="w-4 h-4 text-[#0F4C81] dark:text-[#38BDF8]" /> Recent Admin & System Operations Log
-          </h2>
-          <Link to="/admin/analytics" className="text-xs font-bold text-[#0F4C81] dark:text-[#38BDF8] hover:underline">
-            View Audit History
-          </Link>
-        </div>
-
-        <div className="space-y-3 text-xs">
-          <div className="p-3 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span className="font-bold text-[var(--text-main)]">QUESTION_PUBLISHED</span>
-              <span className="text-[var(--text-muted)]">• SBI Clerk Prelims Profit & Loss question</span>
-            </div>
-            <span className="text-[10px] text-[var(--text-muted)] font-mono">10 mins ago</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-              <span className="font-bold text-[var(--text-main)]">AI_VALIDATION_COMPLETED</span>
-              <span className="text-[var(--text-muted)]">• Confidence 94% on Reasoning Syllogism</span>
-            </div>
-            <span className="text-[10px] text-[var(--text-muted)] font-mono">45 mins ago</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              <span className="font-bold text-[var(--text-main)]">TOPIC_CREATED</span>
-              <span className="text-[var(--text-muted)]">• Added sub-topic "Data Interpretation (Pie Charts)"</span>
-            </div>
-            <span className="text-[10px] text-[var(--text-muted)] font-mono">2 hours ago</span>
-          </div>
-        </div>
       </div>
 
     </div>

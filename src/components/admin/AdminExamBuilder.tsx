@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   FileText,
   Save,
@@ -8,17 +9,27 @@ import {
   CheckCircle2,
   Layers,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { ExamCategory } from '../../types';
 import { adminExamBuilderService, ExamBuilderConfig, SectionRuleConfig } from '../../services/adminExamBuilderService';
 import { initialQuestions } from '../../data/mockData';
 
 export const AdminExamBuilder: React.FC = () => {
+  const { examId } = useParams<{ examId: string }>();
+  const navigate = useNavigate();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentExamId, setCurrentExamId] = useState<string | undefined>(examId);
+
   const [title, setTitle] = useState('SBI Clerk Prelims Live Mock 2024');
   const [examCategory, setExamCategory] = useState<ExamCategory>('SBI Clerk');
   const [phase, setPhase] = useState<'prelims' | 'mains'>('prelims');
   const [durationMinutes, setDurationMinutes] = useState(60);
+  const [status, setStatus] = useState<'draft' | 'validating' | 'ready' | 'published' | 'archived'>('draft');
+  const [versionNumber, setVersionNumber] = useState(1);
   const [enableOptionRandomization, setEnableOptionRandomization] = useState(true);
   const [instructions, setInstructions] = useState('Read questions carefully. Each question carries 1 mark with 0.25 negative marking.');
 
@@ -58,18 +69,40 @@ export const AdminExamBuilder: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  useEffect(() => {
+    if (examId) {
+      setIsLoading(true);
+      adminExamBuilderService.getExamById(examId).then((existing) => {
+        if (existing) {
+          setCurrentExamId(existing.id);
+          setTitle(existing.title);
+          setExamCategory(existing.exam);
+          setPhase(existing.phase);
+          setDurationMinutes(existing.durationMinutes);
+          setStatus(existing.status);
+          setVersionNumber(existing.versionNumber);
+          setEnableOptionRandomization(existing.enableOptionRandomization);
+          setInstructions(existing.instructions);
+          if (existing.sections?.length > 0) setSections(existing.sections);
+        }
+        setIsLoading(false);
+      });
+    }
+  }, [examId]);
+
   const totalQuestionsCalculated = sections.reduce((acc, s) => acc + s.requiredQuestionCount, 0);
   const totalMarksCalculated = sections.reduce((acc, s) => acc + s.requiredQuestionCount * s.marksPerQuestion, 0);
 
   const currentConfig: ExamBuilderConfig = {
+    id: currentExamId,
     title,
     exam: examCategory,
     phase,
     durationMinutes,
     totalQuestions: totalQuestionsCalculated,
     totalMarks: totalMarksCalculated,
-    status: 'draft',
-    versionNumber: 1,
+    status,
+    versionNumber,
     enableOptionRandomization,
     instructions,
     sections,
@@ -87,9 +120,15 @@ export const AdminExamBuilder: React.FC = () => {
 
   const handleSaveDraft = async () => {
     setIsSaving(true);
-    await adminExamBuilderService.saveDraftExam(currentConfig);
+    const res = await adminExamBuilderService.saveDraftExam(currentConfig);
     setIsSaving(false);
-    showToast('Exam draft saved successfully.');
+
+    if (res.success && res.data) {
+      setCurrentExamId(res.data.id);
+      showToast(`Exam '${title}' saved successfully to database.`);
+    } else {
+      showToast(res.error || 'Failed to save exam draft.');
+    }
   };
 
   const handlePublishExam = async () => {
@@ -97,12 +136,14 @@ export const AdminExamBuilder: React.FC = () => {
     const res = await adminExamBuilderService.publishExamVersion(currentConfig, initialQuestions);
     setIsSaving(false);
 
-    if (res.success) {
-      showToast(`Exam Version ${currentConfig.versionNumber} Published Successfully!`);
+    if (res.success && res.publishedConfig) {
+      setCurrentExamId(res.publishedConfig.id);
+      setStatus('published');
+      showToast(`Exam Version ${res.publishedConfig.versionNumber} Published Successfully!`);
     } else {
       setValidationResult({
         isValid: false,
-        blockers: res.blockers || ['Publishing blocked due to pool shortage.'],
+        blockers: res.blockers || ['Publishing blocked due to pool shortage or permission error.'],
         warnings: [],
         sectionAvailability: {},
       });
@@ -112,7 +153,10 @@ export const AdminExamBuilder: React.FC = () => {
 
   const handleDuplicateDraft = () => {
     const duplicate = adminExamBuilderService.duplicateExamAsDraft(currentConfig);
+    setCurrentExamId(undefined);
     setTitle(duplicate.title);
+    setStatus('draft');
+    setVersionNumber(duplicate.versionNumber);
     showToast('Duplicated as new independent draft version.');
   };
 
@@ -122,8 +166,17 @@ export const AdminExamBuilder: React.FC = () => {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0F4C81]" />
+        <span className="text-sm font-semibold text-[var(--text-muted)]">Loading Exam Configuration...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl text-sm border border-slate-700 flex items-center space-x-2">
           <Sparkles className="w-4 h-4 text-emerald-400" />
@@ -131,38 +184,46 @@ export const AdminExamBuilder: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
+      {/* Navigation & Header */}
       <div className="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-color)] shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+        <div className="space-y-1">
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="text-xs font-bold text-[#0F4C81] dark:text-[#38BDF8] hover:underline flex items-center gap-1 mb-1"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+          </button>
           <h1 className="text-2xl font-extrabold text-[var(--text-main)] flex items-center gap-2">
             <FileText className="w-6 h-6 text-[#0F4C81] dark:text-[#38BDF8]" />
-            Production Exam Builder & Versioning Studio
+            {currentExamId ? 'Edit Exam & Mock Test Configuration' : 'Create New Exam & Mock Test'}
           </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1">
+          <p className="text-xs text-[var(--text-muted)]">
             Design exam templates, section rules, pool distributions, and publish immutable exam versions.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleDuplicateDraft}
-            className="px-3 py-2 border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-main)] text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
-          >
-            <Copy className="w-3.5 h-3.5" /> Duplicate Draft
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {currentExamId && (
+            <button
+              onClick={handleDuplicateDraft}
+              className="px-3 py-2 border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-main)] text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+            >
+              <Copy className="w-3.5 h-3.5" /> Duplicate Draft
+            </button>
+          )}
           <button
             onClick={handleSaveDraft}
             disabled={isSaving}
             className="px-4 py-2 border border-[#0F4C81] text-[#0F4C81] dark:text-[#38BDF8] hover:bg-[#0F4C81]/10 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
           >
-            <Save className="w-3.5 h-3.5" /> Save Draft
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Draft
           </button>
           <button
             onClick={handlePublishExam}
             disabled={isSaving}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md transition-colors flex items-center gap-1.5"
           >
-            <Send className="w-3.5 h-3.5" /> Publish Version {currentConfig.versionNumber}
+            <Send className="w-3.5 h-3.5" /> Publish Version {versionNumber}
           </button>
         </div>
       </div>
@@ -173,7 +234,14 @@ export const AdminExamBuilder: React.FC = () => {
         {/* Left Form: Exam Configuration */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
-            <h3 className="font-extrabold text-sm text-[var(--text-main)] uppercase tracking-wider">General Exam Settings</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="font-extrabold text-sm text-[var(--text-main)] uppercase tracking-wider">General Exam Settings</h3>
+              <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {status}
+              </span>
+            </div>
 
             <div>
               <label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Exam Title</label>
@@ -221,6 +289,16 @@ export const AdminExamBuilder: React.FC = () => {
                   className="w-full p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm font-semibold text-[var(--text-main)]"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Instructions</label>
+              <textarea
+                rows={2}
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                className="w-full p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-xs font-medium text-[var(--text-main)]"
+              />
             </div>
 
             <div className="flex items-center gap-2 pt-2">

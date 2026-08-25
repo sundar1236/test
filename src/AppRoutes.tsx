@@ -24,7 +24,8 @@ import { ValidationQueue } from './pages/ValidationQueue';
 import { AuditLogScreen } from './pages/AuditLogScreen';
 import { DesignSystemDoc } from './pages/DesignSystemDoc';
 
-// Admin Import Center Components
+// Admin Exam Builder & Import Center Components
+import { AdminExamBuilder } from './components/admin/AdminExamBuilder';
 import { ImportDashboard } from './components/admin/import/ImportDashboard';
 import { CSVImport } from './components/admin/import/CSVImport';
 import { JSONImport } from './components/admin/import/JSONImport';
@@ -114,6 +115,14 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/admin/dashboard"
           element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
+        />
+        <Route
+          path="/admin/exam-builder"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminExamBuilder />}
+        />
+        <Route
+          path="/admin/exam-builder/:examId"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminExamBuilder />}
         />
         <Route
           path="/admin/questions"

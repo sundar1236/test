@@ -41,7 +41,49 @@ export interface PoolValidationResult {
 }
 
 export class AdminExamBuilderService {
-  private localExamState: ExamBuilderConfig[] = [];
+  /**
+   * Fetches an existing mock test by ID for editing in the Exam Builder.
+   */
+  public async getExamById(examId: string): Promise<ExamBuilderConfig | null> {
+    try {
+      const { data, error } = await supabase
+        .from('mock_tests')
+        .select('*, exams(title, code), mock_test_sections(*, sections(name))')
+        .eq('id', examId)
+        .single();
+
+      if (!error && data) {
+        return {
+          id: data.id,
+          title: data.title,
+          exam: (data.exams?.title as ExamCategory) || 'SBI Clerk',
+          phase: 'prelims',
+          durationMinutes: data.duration_minutes || 60,
+          totalQuestions: data.total_questions || 100,
+          totalMarks: Number(data.total_marks) || 100,
+          status: (data.status as any) || (data.is_published ? 'published' : 'draft'),
+          versionNumber: data.version_number || 1,
+          parentTestId: data.parent_test_id,
+          enableOptionRandomization: data.enable_option_randomization ?? true,
+          instructions: data.instructions || 'Read questions carefully. Each question carries 1 mark with 0.25 negative marking.',
+          sections: Array.isArray(data.question_selection_rules) && data.question_selection_rules.length > 0
+            ? data.question_selection_rules
+            : (data.mock_test_sections || []).map((s: any) => ({
+                sectionId: s.section_id,
+                sectionName: s.sections?.name || 'Quantitative Aptitude',
+                requiredQuestionCount: s.question_count,
+                marksPerQuestion: Number(s.marks_per_question) || 1,
+                negativeMarks: Number(s.negative_marks) || 0.25,
+                durationMinutes: s.duration_minutes || 20,
+              })),
+        };
+      }
+    } catch {
+      // Fallback to local
+    }
+
+    return null;
+  }
 
   /**
    * Evaluates question pool availability for an exam configuration.
@@ -57,7 +99,6 @@ export class AdminExamBuilderService {
     for (const sec of config.sections) {
       totalRequired += sec.requiredQuestionCount;
 
-      // Filter eligible published questions matching section and exam
       const eligible = allQuestions.filter((q) => {
         const matchesExam = !q.exam || q.exam === config.exam;
         const matchesSection = q.section === sec.sectionName || q.section === sec.sectionId;
@@ -100,54 +141,87 @@ export class AdminExamBuilderService {
   }
 
   /**
-   * Creates or updates a draft exam.
+   * Creates or updates an exam/mock_test in Supabase database.
    */
-  public async saveDraftExam(config: ExamBuilderConfig): Promise<ExamBuilderConfig> {
-    const savedConfig: ExamBuilderConfig = {
-      ...config,
-      id: config.id || `exam-${Date.now()}`,
-      status: 'draft',
-      versionNumber: config.versionNumber || 1,
-    };
+  public async saveDraftExam(config: ExamBuilderConfig): Promise<{ success: boolean; data?: ExamBuilderConfig; error?: string }> {
+    const isUpdate = Boolean(config.id);
 
     try {
-      const { data, error } = await supabase
-        .from('mock_tests')
-        .upsert({
-          id: savedConfig.id,
-          title: savedConfig.title,
-          duration_minutes: savedConfig.durationMinutes,
-          total_questions: savedConfig.totalQuestions,
-          total_marks: savedConfig.totalMarks,
-          status: 'draft',
-          is_published: false,
-          version_number: savedConfig.versionNumber,
-          instructions: savedConfig.instructions,
-          enable_option_randomization: savedConfig.enableOptionRandomization,
-          question_selection_rules: savedConfig.sections,
-        })
-        .select()
-        .single();
+      // Resolve exam_id foreign key for mock_tests
+      const { data: examData } = await supabase
+        .from('exams')
+        .select('id')
+        .eq('title', config.exam)
+        .limit(1)
+        .maybeSingle();
 
-      if (!error && data) {
-        savedConfig.id = data.id;
+      const examId = examData?.id || '00000000-0000-0000-0000-000000000001';
+
+      const payload = {
+        title: config.title,
+        exam_id: examId,
+        duration_minutes: config.durationMinutes,
+        total_questions: config.totalQuestions,
+        total_marks: config.totalMarks,
+        status: config.status || 'draft',
+        is_published: config.status === 'published',
+        version_number: config.versionNumber || 1,
+        parent_test_id: config.parentTestId || null,
+        instructions: config.instructions,
+        enable_option_randomization: config.enableOptionRandomization,
+        question_selection_rules: config.sections,
+      };
+
+      let resultData;
+      if (isUpdate && config.id) {
+        const { data, error } = await supabase
+          .from('mock_tests')
+          .update(payload)
+          .eq('id', config.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        resultData = data;
+      } else {
+        const { data, error } = await supabase
+          .from('mock_tests')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+        resultData = data;
       }
-    } catch {
-      // Local fallback
+
+      if (resultData) {
+        return {
+          success: true,
+          data: {
+            ...config,
+            id: resultData.id,
+          },
+        };
+      }
+    } catch (err: any) {
+      console.error('Supabase exam save error:', err);
+      return {
+        success: false,
+        error: err?.message || 'Database permission or validation error.',
+      };
     }
 
-    const idx = this.localExamState.findIndex((e) => e.id === savedConfig.id);
-    if (idx !== -1) {
-      this.localExamState[idx] = savedConfig;
-    } else {
-      this.localExamState.push(savedConfig);
-    }
-
-    return savedConfig;
+    return {
+      success: true,
+      data: {
+        ...config,
+        id: config.id || `exam-${Date.now()}`,
+      },
+    };
   }
 
   /**
-   * Publishes an exam by creating an immutable published version.
+   * Publishes an exam version by updating status to 'published' and is_published to true.
    */
   public async publishExamVersion(config: ExamBuilderConfig, allQuestions: Question[] = initialQuestions): Promise<{ success: boolean; publishedConfig?: ExamBuilderConfig; blockers?: string[] }> {
     const poolCheck = await this.validatePoolAvailability(config, allQuestions);
@@ -160,42 +234,31 @@ export class AdminExamBuilderService {
 
     const publishedConfig: ExamBuilderConfig = {
       ...config,
-      id: config.id || `exam-${Date.now()}`,
       status: 'published',
       versionNumber: config.versionNumber || 1,
     };
 
-    try {
-      await supabase.from('mock_tests').upsert({
-        id: publishedConfig.id,
-        title: publishedConfig.title,
-        duration_minutes: publishedConfig.durationMinutes,
-        total_questions: publishedConfig.totalQuestions,
-        total_marks: publishedConfig.totalMarks,
-        status: 'published',
-        is_published: true,
-        version_number: publishedConfig.versionNumber,
-        instructions: publishedConfig.instructions,
-        enable_option_randomization: publishedConfig.enableOptionRandomization,
-        question_selection_rules: publishedConfig.sections,
-      });
-    } catch {
-      // Local fallback
+    const res = await this.saveDraftExam(publishedConfig);
+    if (!res.success) {
+      return {
+        success: false,
+        blockers: [res.error || 'Failed to publish exam to database.'],
+      };
     }
 
     return {
       success: true,
-      publishedConfig,
+      publishedConfig: res.data || publishedConfig,
     };
   }
 
   /**
-   * Duplicates an existing published exam into a new independent draft version.
+   * Duplicates an existing exam into a new independent draft version.
    */
   public duplicateExamAsDraft(config: ExamBuilderConfig): ExamBuilderConfig {
     return {
       ...config,
-      id: `exam-draft-${Date.now()}`,
+      id: undefined,
       title: `${config.title} (Copy Draft)`,
       status: 'draft',
       versionNumber: config.versionNumber + 1,

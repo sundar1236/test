@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { mockQuestions, mockTestsList } from '../data/mockData';
 import {
   UserAnswerState,
   SecureExamQuestion,
@@ -31,7 +32,7 @@ export const attemptService = {
           sections: (data.mock_test_sections || []).map((s: any) => ({
             id: s.id,
             sectionId: s.section_id,
-            sectionName: s.sections?.name || 'General',
+            sectionName: s.sections?.name || 'Quantitative Aptitude',
             questionCount: s.question_count,
             marksPerQuestion: Number(s.marks_per_question) || 1,
             negativeMarks: Number(s.negative_marks) || 0.25,
@@ -44,6 +45,9 @@ export const attemptService = {
     } catch {
       // Fallthrough
     }
+
+    const foundLocal = mockTestsList.find((t) => t.id === testId);
+    if (foundLocal) return foundLocal;
 
     return {
       id: testId,
@@ -76,7 +80,7 @@ export const attemptService = {
     if (cachedAttemptJson) {
       try {
         const cached = JSON.parse(cachedAttemptJson);
-        if (cached.status === 'in_progress') {
+        if (cached.status === 'in_progress' && Array.isArray(cached.questions) && cached.questions.length > 0) {
           return {
             attemptId: cached.id as string,
             testMeta,
@@ -224,6 +228,7 @@ export const attemptService = {
 
   /**
    * Section-aware question selection and order/option randomization.
+   * Guaranteed to return non-empty question list (falls back to mockQuestions).
    */
   async generateRandomizedQuestionsForTest(testMeta: MockTestMeta): Promise<SecureExamQuestion[]> {
     const generated: SecureExamQuestion[] = [];
@@ -232,7 +237,7 @@ export const attemptService = {
     try {
       const { data: eligibleDbQuestions } = await supabase
         .from('questions')
-        .select('*, question_options(id, option_key, option_text), sections(name), topics(title)')
+        .select('*, question_options(id, option_key, option_text, is_correct), sections(name), topics(title)')
         .eq('status', 'published');
 
       if (eligibleDbQuestions && eligibleDbQuestions.length > 0) {
@@ -273,8 +278,48 @@ export const attemptService = {
         if (generated.length > 0) return generated;
       }
     } catch {
-      // Fallback
+      // Fallthrough to local fallback
     }
+
+    // Reliable fallback using seed mockQuestions
+    const targetSectionsList = sections.length > 0
+      ? sections
+      : [
+          { sectionName: 'Quantitative Aptitude', questionCount: 10 },
+          { sectionName: 'Reasoning Ability', questionCount: 10 },
+          { sectionName: 'English Language', questionCount: 10 },
+        ];
+
+    targetSectionsList.forEach((sec: any) => {
+      const secName = typeof sec === 'string' ? sec : sec.sectionName;
+      const reqCount = typeof sec === 'object' ? sec.questionCount : 10;
+
+      const matching = mockQuestions.filter((q) => q.section === secName);
+      const pool = matching.length > 0 ? matching : mockQuestions;
+
+      for (let i = 0; i < reqCount; i++) {
+        const base = pool[i % pool.length];
+        const qId = `${base.id}-s${i + 1}`;
+        const randomizedOpts = [...base.options]
+          .map((opt) => ({
+            id: opt.id,
+            option_key: opt.id.replace('opt-', '').toUpperCase(),
+            text: opt.text,
+          }))
+          .sort(() => Math.random() - 0.5);
+
+        generated.push({
+          id: qId,
+          sectionId: `sec-${secName.toLowerCase().replace(/\s+/g, '-')}`,
+          sectionName: secName,
+          topicId: 'topic-gen',
+          topicTitle: base.topic || 'General Aptitude',
+          difficulty: base.difficulty || 'Moderate',
+          questionText: i === 0 ? base.questionText : `[Q${i + 1} - ${secName}] ${base.questionText}`,
+          options: randomizedOpts,
+        });
+      }
+    });
 
     return generated;
   },
@@ -344,6 +389,7 @@ export const attemptService = {
 
     const sectionBreakdown: Record<string, SectionResultData> = {};
 
+    // Initialize Section Results Map
     const sections = Array.isArray(testMeta.sections) ? testMeta.sections : [];
     sections.forEach((sec: any) => {
       const sName = typeof sec === 'string' ? sec : sec.sectionName;
@@ -363,10 +409,14 @@ export const attemptService = {
 
     const revealedQuestions: Question[] = [];
 
+    // Evaluate answers with actual section mapping & negative marking
     Object.keys(userAnswers).forEach((qId) => {
       const userAns = userAnswers[qId];
-      const sName = 'Quantitative Aptitude';
+      const baseId = qId.split('-s')[0];
+      const template = mockQuestions.find((mq) => mq.id === baseId || mq.id === qId) || mockQuestions[0];
 
+      // Accurate Section Attribution
+      const sName = template.section || 'Quantitative Aptitude';
       if (!sectionBreakdown[sName]) {
         sectionBreakdown[sName] = {
           sectionId: sName,
@@ -385,6 +435,12 @@ export const attemptService = {
       const secStat = sectionBreakdown[sName];
       secStat.totalQuestions += 1;
 
+      revealedQuestions.push({
+        ...template,
+        id: qId,
+        questionText: template.questionText,
+      });
+
       if (!userAns.selectedOptionId) {
         totalSkipped++;
         secStat.skipped++;
@@ -392,10 +448,26 @@ export const attemptService = {
         totalAttempted++;
         secStat.attempted++;
 
-        totalCorrect++;
-        secStat.correct++;
-        rawScore += 1.0;
-        secStat.score += 1.0;
+        // Determine correct answer choice
+        const correctOptKey = template.correctOptionId || 'A';
+        const isCorrectChoice =
+          userAns.selectedOptionId === correctOptKey ||
+          userAns.selectedOptionId.endsWith(correctOptKey.replace('opt-', '')) ||
+          template.options.some(
+            (opt) => (opt.id === userAns.selectedOptionId || opt.text === userAns.selectedOptionId) && opt.is_correct
+          );
+
+        if (isCorrectChoice) {
+          totalCorrect++;
+          secStat.correct++;
+          rawScore += 1.0;
+          secStat.score += 1.0;
+        } else {
+          totalWrong++;
+          secStat.incorrect++;
+          rawScore -= 0.25; // Negative marking penalty
+          secStat.score -= 0.25;
+        }
       }
     });
 
