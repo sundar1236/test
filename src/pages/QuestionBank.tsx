@@ -1,10 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { ExamCategory, SubjectSection, DifficultyLevel } from '../types';
+import { examService } from '../services/examService';
 import { Search, Bookmark, ChevronDown, ChevronUp, CheckCircle, HelpCircle, Filter } from 'lucide-react';
 
 export const QuestionBank: React.FC = () => {
   const { questions, bookmarks, toggleBookmark } = useApp();
+
+  const [dbExams, setDbExams] = useState<any[]>([]);
+  useEffect(() => {
+    examService.getExams().then((data) => {
+      if (data) setDbExams(data);
+    }).catch(() => {});
+  }, []);
 
   const [search, setSearch] = useState('');
   const [selectedExam, setSelectedExam] = useState<string>('All');
@@ -65,10 +73,18 @@ export const QuestionBank: React.FC = () => {
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-xs font-semibold text-[var(--text-main)] outline-none"
             >
               <option value="All">All Exams</option>
-              <option value="IBPS Clerk">IBPS Clerk</option>
-              <option value="SBI Clerk">SBI Clerk</option>
-              <option value="RBI Assistant">RBI Assistant</option>
-              <option value="RRB Clerk">RRB Clerk</option>
+              {dbExams.length > 0 ? (
+                dbExams.map((ex) => (
+                  <option key={ex.id} value={ex.title}>{ex.title}</option>
+                ))
+              ) : (
+                <>
+                  <option value="IBPS Clerk">IBPS Clerk</option>
+                  <option value="SBI Clerk">SBI Clerk</option>
+                  <option value="RBI Assistant">RBI Assistant</option>
+                  <option value="RRB Clerk">RRB Clerk</option>
+                </>
+              )}
             </select>
           </div>
 

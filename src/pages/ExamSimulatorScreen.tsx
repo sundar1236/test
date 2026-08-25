@@ -105,11 +105,15 @@ export const ExamSimulatorScreen: React.FC = () => {
     [isSubmitting, testMeta, attemptId, testId, startedAtMs, answersMap, navigate, activeUserId]
   );
 
+  const isTimeBased = testMeta?.timingMode !== 'non_time_based';
+
   const { formattedTime } = useExamTimer({
-    durationMinutes,
+    durationMinutes: isTimeBased ? durationMinutes : 999999,
     startedAtMs,
-    onTimerExpire: () => handleFinalSubmission(true),
-    isPaused: loading || isSubmitting,
+    onTimerExpire: () => {
+      if (isTimeBased) handleFinalSubmission(true);
+    },
+    isPaused: loading || isSubmitting || !isTimeBased,
   });
 
   const sectionsList = useMemo(() => {
@@ -345,10 +349,16 @@ export const ExamSimulatorScreen: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-mono font-black text-xs sm:text-sm shadow-xs border border-amber-300">
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse text-slate-950" />
-            <span>{formattedTime}</span>
-          </div>
+          {isTimeBased ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-mono font-black text-xs sm:text-sm shadow-xs border border-amber-300">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse text-slate-950" />
+              <span>{formattedTime}</span>
+            </div>
+          ) : (
+            <div className="px-3 py-1.5 rounded-xl bg-emerald-400 text-slate-950 font-mono font-black text-xs sm:text-sm shadow-xs border border-emerald-300 flex items-center gap-1.5">
+              <span>Untimed Practice</span>
+            </div>
+          )}
 
           <button
             onClick={() => setShowMobilePalette(!showMobilePalette)}

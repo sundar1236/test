@@ -144,6 +144,7 @@ export interface Database {
           exam_id: string;
           title: string;
           duration_minutes: number;
+          timing_mode?: 'time_based' | 'non_time_based';
           total_questions: number;
           total_marks: number;
           is_free_sample: boolean;

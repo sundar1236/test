@@ -17,9 +17,10 @@ export const getAuthRedirectUrl = (path: string = '/'): string => {
 export const authService = {
   async signUp(email: string, pass: string, fullName: string, role: UserRole = 'student') {
     const emailRedirectTo = getAuthRedirectUrl('/login');
+    const cleanEmail = email.trim().toLowerCase();
 
     const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       password: pass,
       options: {
         emailRedirectTo,
@@ -29,6 +30,12 @@ export const authService = {
 
     if (error) {
       throw this.formatAuthError(error);
+    }
+
+    // Supabase Auth identity duplicate detection check
+    // When identity obfuscation or silent existing user signup occurs, identities array is empty
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error('An account with this email address already exists. Please sign in instead.');
     }
 
     if (data.user) {
@@ -162,8 +169,8 @@ export const authService = {
     if (msg.includes('Invalid login credentials')) {
       return new Error('Invalid username, email, or password. Please verify your credentials and try again.');
     }
-    if (msg.includes('User already registered')) {
-      return new Error('An account with this email address already exists.');
+    if (msg.includes('User already registered') || msg.includes('email already exists') || msg.includes('already registered')) {
+      return new Error('An account with this email address already exists. Please sign in instead.');
     }
     if (msg.includes('Password should be at least')) {
       return new Error('Password must be at least 6 characters long.');

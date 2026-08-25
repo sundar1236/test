@@ -23,6 +23,7 @@ export interface ExamBuilderConfig {
   exam: ExamCategory;
   phase: 'prelims' | 'mains';
   durationMinutes: number;
+  timingMode: 'time_based' | 'non_time_based';
   totalQuestions: number;
   totalMarks: number;
   status: 'draft' | 'validating' | 'ready' | 'published' | 'archived';
@@ -59,6 +60,7 @@ export class AdminExamBuilderService {
           exam: (data.exams?.title as ExamCategory) || 'SBI Clerk',
           phase: 'prelims',
           durationMinutes: data.duration_minutes || 60,
+          timingMode: (data.timing_mode as 'time_based' | 'non_time_based') || 'time_based',
           totalQuestions: data.total_questions || 100,
           totalMarks: Number(data.total_marks) || 100,
           status: (data.status as any) || (data.is_published ? 'published' : 'draft'),
@@ -128,8 +130,8 @@ export class AdminExamBuilderService {
       );
     }
 
-    if (config.durationMinutes < 10) {
-      blockers.push('Exam duration must be at least 10 minutes.');
+    if (config.timingMode === 'time_based' && config.durationMinutes <= 0) {
+      blockers.push('Exam duration must be greater than 0 minutes for Time-Based mode.');
     }
 
     return {
@@ -159,7 +161,8 @@ export class AdminExamBuilderService {
       const payload = {
         title: config.title,
         exam_id: examId,
-        duration_minutes: config.durationMinutes,
+        duration_minutes: config.timingMode === 'time_based' ? config.durationMinutes : 0,
+        timing_mode: config.timingMode,
         total_questions: config.totalQuestions,
         total_marks: config.totalMarks,
         status: config.status || 'draft',

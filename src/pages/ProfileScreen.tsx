@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
+import { examService } from '../services/examService';
 import { ExamCategory } from '../types';
 import { Mail, Calendar, Trophy, Save, CheckCircle2, Trash2, AlertTriangle, ShieldAlert, Loader2 } from 'lucide-react';
 
 export const ProfileScreen: React.FC = () => {
   const { userProfile, updateUserProfile, signOut } = useApp();
   const navigate = useNavigate();
+
+  const [dbExams, setDbExams] = useState<any[]>([]);
+  useEffect(() => {
+    examService.getExams().then((data) => {
+      if (data) setDbExams(data);
+    }).catch(() => {});
+  }, []);
 
   const [name, setName] = useState(userProfile.name);
   const [email, setEmail] = useState(userProfile.email);
@@ -143,10 +151,18 @@ export const ProfileScreen: React.FC = () => {
               onChange={(e) => setTargetExam(e.target.value as ExamCategory)}
               className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-sm font-semibold text-[var(--text-main)] outline-none focus:border-[#0F4C81]"
             >
-              <option value="SBI Clerk">SBI Clerk 2024</option>
-              <option value="IBPS Clerk">IBPS Clerk 2024</option>
-              <option value="RBI Assistant">RBI Assistant 2024</option>
-              <option value="RRB Clerk">RRB Office Assistant 2024</option>
+              {dbExams.length > 0 ? (
+                dbExams.map((ex) => (
+                  <option key={ex.id} value={ex.title}>{ex.title}</option>
+                ))
+              ) : (
+                <>
+                  <option value="SBI Clerk">SBI Clerk 2024</option>
+                  <option value="IBPS Clerk">IBPS Clerk 2024</option>
+                  <option value="RBI Assistant">RBI Assistant 2024</option>
+                  <option value="RRB Clerk">RRB Office Assistant 2024</option>
+                </>
+              )}
             </select>
           </div>
 

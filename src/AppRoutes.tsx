@@ -68,7 +68,10 @@ export const AppRoutes: React.FC = () => {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/design-system" element={<DesignSystemDoc />} />
+        <Route
+          path="/design-system"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <DesignSystemDoc />}
+        />
 
         {/* Student Routes */}
         <Route

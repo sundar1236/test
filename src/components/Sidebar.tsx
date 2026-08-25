@@ -41,12 +41,10 @@ export const Sidebar: React.FC = () => {
     { label: 'System Audit Logs', path: '/admin/analytics', icon: History },
   ];
 
-  const commonNavItems = [
-    { label: 'Design System & Docs', path: '/design-system', icon: Settings },
-  ];
-
   const isAdminOrReviewer = role === 'admin' || role === 'super_admin' || role === 'question_reviewer';
-  const navItems = isAdminOrReviewer ? adminNavItems : studentNavItems;
+  const navItems = isAdminOrReviewer
+    ? [...adminNavItems, { label: 'UX & Engineering Ref', path: '/design-system', icon: Settings }]
+    : studentNavItems;
 
   return (
     <>
@@ -72,32 +70,6 @@ export const Sidebar: React.FC = () => {
                     }`}
                   >
                     <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-                    <span>{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div>
-            <p className="px-3 text-[11px] font-bold tracking-wider text-[var(--text-muted)] uppercase mb-2">
-              System Reference
-            </p>
-            <nav className="space-y-1">
-              {commonNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                      isActive
-                        ? 'bg-[#0F4C81] text-white shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-main)]'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
                   </NavLink>
                 );

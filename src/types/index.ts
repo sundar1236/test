@@ -79,6 +79,7 @@ export interface MockTestMeta {
   exam: ExamCategory;
   phase: 'prelims' | 'mains';
   durationMinutes: number;
+  timingMode?: 'time_based' | 'non_time_based';
   totalQuestions: number;
   totalMarks: number;
   sections: SubjectSection[] | TestSectionConfig[];

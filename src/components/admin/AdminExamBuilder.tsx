@@ -29,6 +29,7 @@ export const AdminExamBuilder: React.FC = () => {
   const [title, setTitle] = useState('SBI Clerk Prelims Live Mock 2024');
   const [examCategory, setExamCategory] = useState<ExamCategory>('SBI Clerk');
   const [phase, setPhase] = useState<'prelims' | 'mains'>('prelims');
+  const [timingMode, setTimingMode] = useState<'time_based' | 'non_time_based'>('time_based');
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [status, setStatus] = useState<'draft' | 'validating' | 'ready' | 'published' | 'archived'>('draft');
   const [versionNumber, setVersionNumber] = useState(1);
@@ -80,6 +81,7 @@ export const AdminExamBuilder: React.FC = () => {
           setTitle(existing.title);
           setExamCategory(existing.exam);
           setPhase(existing.phase);
+          setTimingMode(existing.timingMode || 'time_based');
           setDurationMinutes(existing.durationMinutes);
           setStatus(existing.status);
           setVersionNumber(existing.versionNumber);
@@ -100,7 +102,8 @@ export const AdminExamBuilder: React.FC = () => {
     title,
     exam: examCategory,
     phase,
-    durationMinutes,
+    timingMode,
+    durationMinutes: timingMode === 'time_based' ? durationMinutes : 0,
     totalQuestions: totalQuestionsCalculated,
     totalMarks: totalMarksCalculated,
     status,
@@ -315,15 +318,51 @@ export const AdminExamBuilder: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Total Duration (Mins)</label>
+                <label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Timing Mode</label>
+                <div className="flex items-center gap-3 pt-1">
+                  <label className="flex items-center gap-1 text-xs font-bold text-[var(--text-main)] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timingMode"
+                      value="time_based"
+                      checked={timingMode === 'time_based'}
+                      onChange={() => setTimingMode('time_based')}
+                      className="text-[#0F4C81] focus:ring-[#0F4C81]"
+                    />
+                    Time-Based
+                  </label>
+                  <label className="flex items-center gap-1 text-xs font-bold text-[var(--text-main)] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timingMode"
+                      value="non_time_based"
+                      checked={timingMode === 'non_time_based'}
+                      onChange={() => setTimingMode('non_time_based')}
+                      className="text-[#0F4C81] focus:ring-[#0F4C81]"
+                    />
+                    Non-Time-Based
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Duration Input based on Timing Mode */}
+            {timingMode === 'time_based' ? (
+              <div>
+                <label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Duration (Minutes)</label>
                 <input
                   type="number"
+                  min="1"
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                  onChange={(e) => setDurationMinutes(Math.max(1, Number(e.target.value)))}
                   className="w-full p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm font-semibold text-[var(--text-main)]"
                 />
               </div>
-            </div>
+            ) : (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-semibold">
+                No countdown timer will be used for this exam. Students can attempt and submit manually.
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Instructions</label>
@@ -424,7 +463,9 @@ export const AdminExamBuilder: React.FC = () => {
               </div>
               <div className="flex justify-between py-1.5 border-b border-[var(--border-color)]">
                 <span>Configured Duration:</span>
-                <span className="font-extrabold text-[var(--text-main)]">{durationMinutes} Minutes</span>
+                <span className="font-extrabold text-[var(--text-main)]">
+                  {timingMode === 'time_based' ? `${durationMinutes} Minutes` : 'Untimed / Non-Time-Based'}
+                </span>
               </div>
             </div>
 

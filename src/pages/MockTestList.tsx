@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initialMockTests } from '../data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { examService } from '../services/examService';
 import { Clock, HelpCircle, Trophy, Play, Filter } from 'lucide-react';
 import { ExamCategory } from '../types';
 
 export const MockTestList: React.FC = () => {
   const navigate = useNavigate();
   const { userProfile } = useApp();
+
+  const [dbExams, setDbExams] = useState<any[]>([]);
+  useEffect(() => {
+    examService.getExams().then((data) => {
+      if (data) setDbExams(data);
+    }).catch(() => {});
+  }, []);
 
   const [activeExamFilter, setActiveExamFilter] = useState<string>(userProfile.targetExam || 'All');
 
@@ -28,7 +36,7 @@ export const MockTestList: React.FC = () => {
 
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl">
-          {['All', 'SBI Clerk', 'IBPS Clerk', 'RBI Assistant', 'RRB Clerk'].map((exam) => (
+          {['All', ...(dbExams.length > 0 ? dbExams.map((e) => e.title) : ['SBI Clerk', 'IBPS Clerk', 'RBI Assistant', 'RRB Clerk'])].map((exam) => (
             <button
               key={exam}
               onClick={() => setActiveExamFilter(exam)}

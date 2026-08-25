@@ -27,6 +27,7 @@ export const attemptService = {
           exam: data.exams?.title || 'SBI Clerk',
           phase: 'prelims',
           durationMinutes: data.duration_minutes,
+          timingMode: (data.timing_mode as 'time_based' | 'non_time_based') || 'time_based',
           totalQuestions: data.total_questions,
           totalMarks: data.total_marks,
           sections: (data.mock_test_sections || []).map((s: any) => ({
@@ -55,6 +56,7 @@ export const attemptService = {
       exam: 'SBI Clerk',
       phase: 'prelims',
       durationMinutes: 60,
+      timingMode: 'time_based',
       totalQuestions: 100,
       totalMarks: 100,
       sections: [
