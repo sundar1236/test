@@ -20,7 +20,7 @@ import {
 export const ExamSimulatorScreen: React.FC = () => {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
-  const { bookmarks, toggleBookmark } = useApp();
+  const { bookmarks, toggleBookmark, user } = useApp();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [testMeta, setTestMeta] = useState<MockTestMeta | null>(null);
@@ -37,6 +37,8 @@ export const ExamSimulatorScreen: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
+  const activeUserId = user?.id || 'usr-student-1';
+
   useEffect(() => {
     const currentTestId = testId || 'test-sbi-clerk-full-01';
     let isMounted = true;
@@ -44,7 +46,7 @@ export const ExamSimulatorScreen: React.FC = () => {
     async function initExam() {
       try {
         setLoading(true);
-        const attemptData = await attemptService.startAttempt(currentTestId);
+        const attemptData = await attemptService.startAttempt(currentTestId, activeUserId);
         if (!isMounted) return;
 
         setTestMeta(attemptData.testMeta);
@@ -69,7 +71,7 @@ export const ExamSimulatorScreen: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [testId]);
+  }, [testId, activeUserId]);
 
   const handleFinalSubmission = useCallback(
     async (isTimeoutTrigger: boolean = false) => {
@@ -85,7 +87,7 @@ export const ExamSimulatorScreen: React.FC = () => {
         const timeSpent = Math.max(1, Math.floor((Date.now() - startedAtMs) / 1000));
         const result = await attemptService.submitAttempt(
           activeTestId,
-          'usr-student-1',
+          activeUserId,
           attemptId,
           answersMap,
           testMeta,
@@ -100,7 +102,7 @@ export const ExamSimulatorScreen: React.FC = () => {
         setIsSubmitting(false);
       }
     },
-    [isSubmitting, testMeta, attemptId, testId, startedAtMs, answersMap, navigate]
+    [isSubmitting, testMeta, attemptId, testId, startedAtMs, answersMap, navigate, activeUserId]
   );
 
   const { formattedTime } = useExamTimer({
@@ -131,10 +133,10 @@ export const ExamSimulatorScreen: React.FC = () => {
       };
       setAnswersMap((prev) => ({ ...prev, [currentQuestion.id]: updated }));
       if (activeTestId && attemptId) {
-        attemptService.updateAnswer(activeTestId, 'usr-student-1', attemptId, updated);
+        attemptService.updateAnswer(activeTestId, activeUserId, attemptId, updated);
       }
     }
-  }, [currentQuestion, testId, testMeta, attemptId, answersMap]);
+  }, [currentQuestion, testId, testMeta, attemptId, answersMap, activeUserId]);
 
   const handleSelectOption = (optionId: string) => {
     const activeTestId = testId || testMeta?.id || 'test-sbi-clerk-full-01';
@@ -153,7 +155,7 @@ export const ExamSimulatorScreen: React.FC = () => {
 
     setAnswersMap((prev) => ({ ...prev, [currentQuestion.id]: updated }));
     if (activeTestId && attemptId) {
-      attemptService.updateAnswer(activeTestId, 'usr-student-1', attemptId, updated);
+      attemptService.updateAnswer(activeTestId, activeUserId, attemptId, updated);
     }
   };
 
@@ -170,7 +172,7 @@ export const ExamSimulatorScreen: React.FC = () => {
 
     setAnswersMap((prev) => ({ ...prev, [currentQuestion.id]: updated }));
     if (activeTestId && attemptId) {
-      attemptService.updateAnswer(activeTestId, 'usr-student-1', attemptId, updated);
+      attemptService.updateAnswer(activeTestId, activeUserId, attemptId, updated);
     }
 
     if (currentQuestionIndex < sectionQuestions.length - 1) {
@@ -202,7 +204,7 @@ export const ExamSimulatorScreen: React.FC = () => {
 
     setAnswersMap((prev) => ({ ...prev, [currentQuestion.id]: updated }));
     if (activeTestId && attemptId) {
-      attemptService.updateAnswer(activeTestId, 'usr-student-1', attemptId, updated);
+      attemptService.updateAnswer(activeTestId, activeUserId, attemptId, updated);
     }
 
     if (currentQuestionIndex < sectionQuestions.length - 1) {
@@ -235,7 +237,7 @@ export const ExamSimulatorScreen: React.FC = () => {
 
     setAnswersMap((prev) => ({ ...prev, [currentQuestion.id]: updated }));
     if (activeTestId && attemptId) {
-      attemptService.updateAnswer(activeTestId, 'usr-student-1', attemptId, updated);
+      attemptService.updateAnswer(activeTestId, activeUserId, attemptId, updated);
     }
   };
 

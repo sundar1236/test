@@ -1,12 +1,28 @@
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../types/database';
 
+export const getAuthRedirectUrl = (path: string = '/'): string => {
+  const isProduction =
+    window.location.hostname === 'mocktesttrial.netlify.app' ||
+    import.meta.env.MODE === 'production';
+
+  const baseUrl = isProduction
+    ? 'https://mocktesttrial.netlify.app'
+    : window.location.origin;
+
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${cleanPath}`;
+};
+
 export const authService = {
   async signUp(email: string, pass: string, fullName: string, role: UserRole = 'student') {
+    const emailRedirectTo = getAuthRedirectUrl('/login');
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password: pass,
       options: {
+        emailRedirectTo,
         data: { full_name: fullName, role },
       },
     });
@@ -31,9 +47,36 @@ export const authService = {
     return data;
   },
 
-  async signIn(email: string, pass: string) {
-    const cleanEmail = email.trim().toLowerCase();
+  async signIn(identifier: string, pass: string) {
+    let cleanEmail = identifier.trim().toLowerCase();
 
+    // Map username aliases to email addresses
+    if (!cleanEmail.includes('@')) {
+      if (cleanEmail === 'admin' || cleanEmail === 'sundhar') {
+        cleanEmail = 'sundhar1301@gmail.com';
+      } else if (cleanEmail === 'student' || cleanEmail === 'test') {
+        cleanEmail = 'student@test.com';
+      } else {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('email')
+            .ilike('full_name', `%${cleanEmail}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (data?.email) {
+            cleanEmail = data.email;
+          } else {
+            cleanEmail = `${cleanEmail}@example.com`;
+          }
+        } catch {
+          cleanEmail = `${cleanEmail}@example.com`;
+        }
+      }
+    }
+
+    // Authenticate securely against Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: pass,
@@ -54,8 +97,10 @@ export const authService = {
   },
 
   async resetPassword(email: string) {
+    const redirectTo = getAuthRedirectUrl('/reset-password');
+
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo,
     });
 
     if (error) {
@@ -63,6 +108,30 @@ export const authService = {
     }
 
     return data;
+  },
+
+  async deleteAccount(): Promise<void> {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+
+    if (!userId) {
+      throw new Error('No active user session found to perform account deletion.');
+    }
+
+    const { error: rpcError } = await supabase.rpc('delete_user_account');
+
+    if (rpcError) {
+      try {
+        await supabase.from('bookmarks').delete().eq('user_id', userId);
+        await supabase.from('user_topic_progress').delete().eq('user_id', userId);
+        await supabase.from('test_attempts').delete().eq('user_id', userId);
+        await supabase.from('profiles').delete().eq('id', userId);
+      } catch (err) {
+        console.warn('Manual user row cleanup warning:', err);
+      }
+    }
+
+    await this.signOut();
   },
 
   async getSession() {
@@ -91,7 +160,7 @@ export const authService = {
       return new Error('Unable to connect to the authentication server. Please check your network connection.');
     }
     if (msg.includes('Invalid login credentials')) {
-      return new Error('Invalid email or password. Please verify your credentials and try again.');
+      return new Error('Invalid username, email, or password. Please verify your credentials and try again.');
     }
     if (msg.includes('User already registered')) {
       return new Error('An account with this email address already exists.');

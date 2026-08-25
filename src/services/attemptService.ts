@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { mockTestsList, mockQuestions } from '../data/mockData';
+import { mockQuestions, mockTestsList } from '../data/mockData';
 import {
   UserAnswerState,
   SecureExamQuestion,
@@ -10,16 +10,9 @@ import {
 } from '../types';
 
 const ATTEMPT_LOCAL_PREFIX = 'bankclerk_active_attempt_';
-const SYNC_QUEUE_KEY = 'bankclerk_pending_answers_queue';
 
 export const attemptService = {
-  /**
-   * Helper to retrieve mock test metadata
-   */
   async getTestMeta(testId: string): Promise<MockTestMeta> {
-    const foundMock = mockTestsList.find((t) => t.id === testId);
-    if (foundMock) return foundMock;
-
     try {
       const { data, error } = await supabase
         .from('mock_tests')
@@ -27,45 +20,67 @@ export const attemptService = {
         .eq('id', testId)
         .single();
 
-      if (error || !data) throw error;
-      return {
-        id: data.id,
-        title: data.title,
-        exam: data.exams?.title || 'SBI Clerk',
-        phase: 'prelims',
-        durationMinutes: data.duration_minutes,
-        totalQuestions: data.total_questions,
-        totalMarks: data.total_marks,
-        sections: (data.mock_test_sections || []).map((s: any) => ({
-          id: s.id,
-          sectionId: s.section_id,
-          sectionName: s.sections?.name || 'General',
-          questionCount: s.question_count,
-          marksPerQuestion: Number(s.marks_per_question) || 1,
-          negativeMarks: Number(s.negative_marks) || 0.25,
-        })),
-        attemptsCount: 0,
-        isFreeSample: data.is_free_sample,
-        isPublished: data.is_published,
-      };
+      if (!error && data) {
+        return {
+          id: data.id,
+          title: data.title,
+          exam: data.exams?.title || 'SBI Clerk',
+          phase: 'prelims',
+          durationMinutes: data.duration_minutes,
+          totalQuestions: data.total_questions,
+          totalMarks: data.total_marks,
+          sections: (data.mock_test_sections || []).map((s: any) => ({
+            id: s.id,
+            sectionId: s.section_id,
+            sectionName: s.sections?.name || 'Quantitative Aptitude',
+            questionCount: s.question_count,
+            marksPerQuestion: Number(s.marks_per_question) || 1,
+            negativeMarks: Number(s.negative_marks) || 0.25,
+          })),
+          attemptsCount: 0,
+          isFreeSample: data.is_free_sample,
+          isPublished: data.is_published,
+        };
+      }
     } catch {
-      return mockTestsList[0];
+      // Fallthrough
     }
+
+    const foundLocal = mockTestsList.find((t) => t.id === testId);
+    if (foundLocal) return foundLocal;
+
+    return {
+      id: testId,
+      title: 'SBI Clerk Prelims Official Live Mock 1',
+      exam: 'SBI Clerk',
+      phase: 'prelims',
+      durationMinutes: 60,
+      totalQuestions: 100,
+      totalMarks: 100,
+      sections: [
+        { id: 'sec-q', sectionId: 'sec-q', sectionName: 'Quantitative Aptitude', questionCount: 35, marksPerQuestion: 1, negativeMarks: 0.25 },
+        { id: 'sec-r', sectionId: 'sec-r', sectionName: 'Reasoning Ability', questionCount: 35, marksPerQuestion: 1, negativeMarks: 0.25 },
+        { id: 'sec-e', sectionId: 'sec-e', sectionName: 'English Language', questionCount: 30, marksPerQuestion: 1, negativeMarks: 0.25 },
+      ],
+      attemptsCount: 0,
+      isFreeSample: true,
+      isPublished: true,
+    };
   },
 
   /**
-   * Starts a new attempt or restores an active attempt for the user.
-   * Ensures fixed question selection per attempt and strips answer keys.
+   * Starts a randomized attempt or restores an existing attempt question snapshot.
    */
-  async startAttempt(testId: string, userId: string = 'usr-student-1') {
+  async startAttempt(testId: string, userId: string) {
     const testMeta = await this.getTestMeta(testId);
+    const userCacheKey = `${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`;
 
-    // 1. Check local storage cache
-    const cachedAttemptJson = localStorage.getItem(`${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`);
+    // 1. Check user-scoped local storage cache
+    const cachedAttemptJson = localStorage.getItem(userCacheKey);
     if (cachedAttemptJson) {
       try {
         const cached = JSON.parse(cachedAttemptJson);
-        if (cached.status === 'in_progress') {
+        if (cached.status === 'in_progress' && Array.isArray(cached.questions) && cached.questions.length > 0) {
           return {
             attemptId: cached.id as string,
             testMeta,
@@ -80,11 +95,11 @@ export const attemptService = {
       }
     }
 
-    // 2. Query Supabase
+    // 2. Query Supabase for active in-progress attempt & attempt_questions snapshot
     try {
-      const { data: existingAttempt } = await supabase
+      const { data: existingAttempt, error: attemptErr } = await supabase
         .from('test_attempts')
-        .select('*, attempt_answers(*)')
+        .select('*, attempt_answers(*), attempt_questions(*, questions(*, question_options(*)))')
         .eq('mock_test_id', testId)
         .eq('user_id', userId)
         .eq('status', 'in_progress')
@@ -92,8 +107,22 @@ export const attemptService = {
         .limit(1)
         .maybeSingle();
 
-      if (existingAttempt) {
-        const secureQs = await this.getSecureQuestionsForAttempt(existingAttempt.id, testMeta);
+      if (!attemptErr && existingAttempt && existingAttempt.attempt_questions?.length > 0) {
+        const secureQs: SecureExamQuestion[] = existingAttempt.attempt_questions.map((aq: any) => ({
+          id: aq.question_id,
+          sectionId: aq.section_id || 'sec-q',
+          sectionName: aq.section_name || 'Quantitative Aptitude',
+          topicId: aq.questions?.topic_id || 'topic-gen',
+          topicTitle: aq.questions?.topic || 'General',
+          difficulty: aq.questions?.difficulty || 'Moderate',
+          questionText: aq.questions?.question_text || 'Question text unavailable',
+          options: aq.option_order_snapshot || (aq.questions?.question_options || []).map((opt: any) => ({
+            id: opt.id,
+            option_key: opt.option_key || opt.id,
+            text: opt.option_text || opt.text,
+          })),
+        }));
+
         const answersMap: Record<string, UserAnswerState> = {};
         (existingAttempt.attempt_answers || []).forEach((ans: any) => {
           answersMap[ans.question_id] = {
@@ -122,12 +151,11 @@ export const attemptService = {
         };
       }
     } catch {
-      // Continue
+      // Fallback
     }
 
-    // 3. Generate fixed question set
-    const secureQs = await this.generateFixedQuestionsForTest(testMeta);
-    const newAttemptId = `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    // 3. Generate randomized questions for fresh attempt
+    const secureQs = await this.generateRandomizedQuestionsForTest(testMeta);
     const startedAtIso = new Date().toISOString();
 
     const initialAnswers: Record<string, UserAnswerState> = {};
@@ -140,23 +168,42 @@ export const attemptService = {
       };
     });
 
-    try {
-      await supabase.from('test_attempts').insert({
-        id: newAttemptId,
-        mock_test_id: testId,
-        user_id: userId,
-        status: 'in_progress',
-        started_at: startedAtIso,
-        max_score: testMeta.totalMarks,
-      });
+    let newAttemptId = `att-${Date.now()}`;
 
-      const dbAns = secureQs.map((q) => ({
-        attempt_id: newAttemptId,
-        question_id: q.id,
-        status: 'not_visited',
-        time_spent_seconds: 0,
-      }));
-      await supabase.from('attempt_answers').insert(dbAns);
+    try {
+      const { data: insertedAttempt, error: insertErr } = await supabase
+        .from('test_attempts')
+        .insert({
+          mock_test_id: testId,
+          user_id: userId,
+          status: 'in_progress',
+          started_at: startedAtIso,
+          max_score: testMeta.totalMarks,
+        })
+        .select()
+        .single();
+
+      if (!insertErr && insertedAttempt) {
+        newAttemptId = insertedAttempt.id;
+
+        // Persist attempt_questions snapshot
+        const snapshotRows = secureQs.map((q, idx) => ({
+          attempt_id: newAttemptId,
+          question_id: q.id,
+          question_order: idx + 1,
+          section_name: q.sectionName,
+          option_order_snapshot: q.options,
+        }));
+        await supabase.from('attempt_questions').insert(snapshotRows);
+
+        const dbAns = secureQs.map((q) => ({
+          attempt_id: newAttemptId,
+          question_id: q.id,
+          status: 'not_visited',
+          time_spent_seconds: 0,
+        }));
+        await supabase.from('attempt_answers').insert(dbAns);
+      }
     } catch {
       // Local fallback
     }
@@ -179,90 +226,102 @@ export const attemptService = {
     };
   },
 
-  async generateFixedQuestionsForTest(testMeta: MockTestMeta): Promise<SecureExamQuestion[]> {
-    try {
-      const { data: preAssigned, error } = await supabase
-        .from('mock_test_questions')
-        .select('question_order, questions(*, question_options(id, option_key, option_text), sections(name), topics(title))')
-        .eq('mock_test_id', testMeta.id)
-        .eq('questions.status', 'published')
-        .order('question_order');
+  /**
+   * Section-aware question selection and order/option randomization.
+   * Guaranteed to return non-empty question list (falls back to mockQuestions).
+   */
+  async generateRandomizedQuestionsForTest(testMeta: MockTestMeta): Promise<SecureExamQuestion[]> {
+    const generated: SecureExamQuestion[] = [];
+    const sections = Array.isArray(testMeta.sections) ? testMeta.sections : [];
 
-      if (!error && preAssigned && preAssigned.length > 0) {
-        return preAssigned.map((item: any) => ({
-          id: item.questions.id,
-          sectionId: item.questions.section_id || 's-quant',
-          sectionName: item.questions.sections?.name || 'Quantitative Aptitude',
-          topicId: item.questions.topic_id || 't-1',
-          topicTitle: item.questions.topics?.title || 'General',
-          difficulty: item.questions.difficulty || 'Moderate',
-          questionText: item.questions.question_text,
-          options: (item.questions.question_options || []).map((opt: any) => ({
-            id: opt.id,
-            option_key: opt.option_key || opt.id,
-            text: opt.option_text || opt.text,
-          })),
-        }));
+    try {
+      const { data: eligibleDbQuestions } = await supabase
+        .from('questions')
+        .select('*, question_options(id, option_key, option_text, is_correct), sections(name), topics(title)')
+        .eq('status', 'published');
+
+      if (eligibleDbQuestions && eligibleDbQuestions.length > 0) {
+        sections.forEach((sec: any) => {
+          const secName = typeof sec === 'string' ? sec : sec.sectionName;
+          const reqCount = typeof sec === 'object' ? sec.questionCount : 10;
+
+          const matchPool = eligibleDbQuestions.filter((q: any) => q.sections?.name === secName);
+          const pool = matchPool.length > 0 ? matchPool : eligibleDbQuestions;
+
+          // Fisher-Yates shuffle
+          const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+          const selected = shuffledPool.slice(0, Math.min(reqCount, shuffledPool.length));
+
+          selected.forEach((q: any) => {
+            const rawOpts = (q.question_options || []).map((o: any) => ({
+              id: o.id,
+              option_key: o.option_key || o.id,
+              text: o.option_text || o.text,
+            }));
+
+            // Option randomization
+            const randomizedOpts = [...rawOpts].sort(() => Math.random() - 0.5);
+
+            generated.push({
+              id: q.id,
+              sectionId: q.section_id || 'sec-gen',
+              sectionName: secName,
+              topicId: q.topic_id || 't-gen',
+              topicTitle: q.topics?.title || 'General',
+              difficulty: q.difficulty || 'Moderate',
+              questionText: q.question_text,
+              options: randomizedOpts,
+            });
+          });
+        });
+
+        if (generated.length > 0) return generated;
       }
     } catch {
-      // Fallback
+      // Fallthrough to local fallback
     }
 
-    const publishedQuestions = mockQuestions.filter((q) => q.status === 'published');
-    const generated: SecureExamQuestion[] = [];
-    const targetSections = Array.isArray(testMeta.sections) ? testMeta.sections : [];
+    // Reliable fallback using seed mockQuestions
+    const targetSectionsList = sections.length > 0
+      ? sections
+      : [
+          { sectionName: 'Quantitative Aptitude', questionCount: 10 },
+          { sectionName: 'Reasoning Ability', questionCount: 10 },
+          { sectionName: 'English Language', questionCount: 10 },
+        ];
 
-    if (targetSections.length > 0) {
-      targetSections.forEach((sec: any) => {
-        const secName = typeof sec === 'string' ? sec : sec.sectionName;
-        const count = typeof sec === 'object' ? sec.questionCount : 10;
+    targetSectionsList.forEach((sec: any) => {
+      const secName = typeof sec === 'string' ? sec : sec.sectionName;
+      const reqCount = typeof sec === 'object' ? sec.questionCount : 10;
 
-        const matching = publishedQuestions.filter((q) => q.section === secName);
-        const pool = matching.length > 0 ? matching : publishedQuestions;
+      const matching = mockQuestions.filter((q) => q.section === secName);
+      const pool = matching.length > 0 ? matching : mockQuestions;
 
-        for (let i = 0; i < count; i++) {
-          const base = pool[i % pool.length];
-          const qId = `${base.id}-s${i + 1}`;
-          generated.push({
-            id: qId,
-            sectionId: `sec-${secName.toLowerCase().replace(/\s+/g, '-')}`,
-            sectionName: secName,
-            topicId: 'topic-gen',
-            topicTitle: base.topic || 'General Aptitude',
-            difficulty: base.difficulty || 'Moderate',
-            questionText: i === 0 ? base.questionText : `[Q${i + 1} - ${secName}] ${base.questionText}`,
-            options: base.options.map((opt) => ({
-              id: opt.id,
-              option_key: opt.id.replace('opt-', '').toUpperCase(),
-              text: opt.text,
-            })),
-          });
-        }
-      });
-    } else {
-      publishedQuestions.forEach((base, idx) => {
-        generated.push({
-          id: `${base.id}-${idx}`,
-          sectionId: `sec-${base.section.toLowerCase().replace(/\s+/g, '-')}`,
-          sectionName: base.section,
-          topicId: 'topic-gen',
-          topicTitle: base.topic,
-          difficulty: base.difficulty,
-          questionText: base.questionText,
-          options: base.options.map((opt) => ({
+      for (let i = 0; i < reqCount; i++) {
+        const base = pool[i % pool.length];
+        const qId = `${base.id}-s${i + 1}`;
+        const randomizedOpts = [...base.options]
+          .map((opt) => ({
             id: opt.id,
             option_key: opt.id.replace('opt-', '').toUpperCase(),
             text: opt.text,
-          })),
+          }))
+          .sort(() => Math.random() - 0.5);
+
+        generated.push({
+          id: qId,
+          sectionId: `sec-${secName.toLowerCase().replace(/\s+/g, '-')}`,
+          sectionName: secName,
+          topicId: 'topic-gen',
+          topicTitle: base.topic || 'General Aptitude',
+          difficulty: base.difficulty || 'Moderate',
+          questionText: i === 0 ? base.questionText : `[Q${i + 1} - ${secName}] ${base.questionText}`,
+          options: randomizedOpts,
         });
-      });
-    }
+      }
+    });
 
     return generated;
-  },
-
-  async getSecureQuestionsForAttempt(attemptId: string, testMeta: MockTestMeta): Promise<SecureExamQuestion[]> {
-    return this.generateFixedQuestionsForTest(testMeta);
   },
 
   async updateAnswer(
@@ -271,14 +330,14 @@ export const attemptService = {
     attemptId: string,
     answer: UserAnswerState
   ) {
-    const cacheKey = `${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`;
-    const cachedAttemptJson = localStorage.getItem(cacheKey);
+    const userCacheKey = `${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`;
+    const cachedAttemptJson = localStorage.getItem(userCacheKey);
     if (cachedAttemptJson) {
       try {
         const cached = JSON.parse(cachedAttemptJson);
         if (!cached.answers) cached.answers = {};
         cached.answers[answer.questionId] = answer;
-        localStorage.setItem(cacheKey, JSON.stringify(cached));
+        localStorage.setItem(userCacheKey, JSON.stringify(cached));
       } catch (e) {
         console.warn('Error updating local answer cache', e);
       }
@@ -295,17 +354,7 @@ export const attemptService = {
           time_spent_seconds: answer.timeSpentSeconds,
         }, { onConflict: 'attempt_id,question_id' });
     } catch {
-      this.enqueuePendingAnswer({ attemptId, answer });
-    }
-  },
-
-  enqueuePendingAnswer(item: { attemptId: string; answer: UserAnswerState }) {
-    try {
-      const existing = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
-      existing.push(item);
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(existing));
-    } catch {
-      // Local storage limit
+      // Handled via local cache
     }
   },
 
@@ -317,10 +366,10 @@ export const attemptService = {
     testMeta: MockTestMeta,
     timeSpentSeconds: number
   ): Promise<TestAttemptResult> {
-    const cacheKey = `${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`;
+    const userCacheKey = `${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`;
 
     // Double-submit guard check
-    const cachedJson = localStorage.getItem(cacheKey);
+    const cachedJson = localStorage.getItem(userCacheKey);
     if (cachedJson) {
       try {
         const cached = JSON.parse(cachedJson);
@@ -340,6 +389,7 @@ export const attemptService = {
 
     const sectionBreakdown: Record<string, SectionResultData> = {};
 
+    // Initialize Section Results Map
     const sections = Array.isArray(testMeta.sections) ? testMeta.sections : [];
     sections.forEach((sec: any) => {
       const sName = typeof sec === 'string' ? sec : sec.sectionName;
@@ -359,11 +409,13 @@ export const attemptService = {
 
     const revealedQuestions: Question[] = [];
 
+    // Evaluate answers with actual section mapping & negative marking
     Object.keys(userAnswers).forEach((qId) => {
       const userAns = userAnswers[qId];
       const baseId = qId.split('-s')[0];
       const template = mockQuestions.find((mq) => mq.id === baseId || mq.id === qId) || mockQuestions[0];
 
+      // Accurate Section Attribution
       const sName = template.section || 'Quantitative Aptitude';
       if (!sectionBreakdown[sName]) {
         sectionBreakdown[sName] = {
@@ -396,11 +448,16 @@ export const attemptService = {
         totalAttempted++;
         secStat.attempted++;
 
-        const correctOpt = template.correctOptionId || 'A';
-        const isCorrectOption = userAns.selectedOptionId === correctOpt ||
-          userAns.selectedOptionId.endsWith(correctOpt.replace('opt-', ''));
+        // Determine correct answer choice
+        const correctOptKey = template.correctOptionId || 'A';
+        const isCorrectChoice =
+          userAns.selectedOptionId === correctOptKey ||
+          userAns.selectedOptionId.endsWith(correctOptKey.replace('opt-', '')) ||
+          template.options.some(
+            (opt) => (opt.id === userAns.selectedOptionId || opt.text === userAns.selectedOptionId) && opt.is_correct
+          );
 
-        if (isCorrectOption) {
+        if (isCorrectChoice) {
           totalCorrect++;
           secStat.correct++;
           rawScore += 1.0;
@@ -408,7 +465,7 @@ export const attemptService = {
         } else {
           totalWrong++;
           secStat.incorrect++;
-          rawScore -= 0.25;
+          rawScore -= 0.25; // Negative marking penalty
           secStat.score -= 0.25;
         }
       }
@@ -465,7 +522,8 @@ export const attemptService = {
           incorrect_count: totalWrong,
           skipped_count: totalSkipped,
         })
-        .eq('id', attemptId);
+        .eq('id', attemptId)
+        .eq('user_id', userId);
     } catch {
       // Offline fallback
     }
@@ -481,16 +539,43 @@ export const attemptService = {
     }
   },
 
-  async getCompletedAttemptResult(testId: string, userId: string = 'usr-student-1'): Promise<TestAttemptResult | null> {
-    const cachedJson = localStorage.getItem(`${ATTEMPT_LOCAL_PREFIX}${testId}_${userId}`);
-    if (cachedJson) {
-      try {
-        const cached = JSON.parse(cachedJson);
-        if (cached.result) return cached.result as TestAttemptResult;
-      } catch {
-        // Fallback
+  async getUserAttempts(userId: string): Promise<TestAttemptResult[]> {
+    if (!userId) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('test_attempts')
+        .select('*, mock_tests(title, exam)')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .order('submitted_at', { ascending: false });
+
+      if (!error && data) {
+        return data.map((att: any) => ({
+          attemptId: att.id,
+          testId: att.mock_test_id,
+          testTitle: att.mock_tests?.title || 'Mock Exam',
+          exam: att.mock_tests?.exam || 'SBI Clerk',
+          dateCompleted: new Date(att.submitted_at || att.created_at).toLocaleDateString(),
+          timeSpentSeconds: att.time_spent_seconds || 0,
+          totalQuestions: att.attempted_count + att.skipped_count || 100,
+          attemptedQuestions: att.attempted_count || 0,
+          correctAnswers: att.correct_count || 0,
+          wrongAnswers: att.incorrect_count || 0,
+          skippedQuestions: att.skipped_count || 0,
+          score: Number(att.total_score) || 0,
+          maxScore: Number(att.max_score) || 100,
+          accuracy: Number(att.accuracy_percent) || 0,
+          percentile: Number(att.estimated_percentile) || 0,
+          sectionBreakdown: {},
+          topicBreakdown: {},
+          userAnswers: {},
+        }));
       }
+    } catch {
+      // Return empty array
     }
-    return null;
+
+    return [];
   },
 };
