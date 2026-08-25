@@ -79,7 +79,7 @@ export class AdminExamBuilderService {
         };
       }
     } catch {
-      // Fallback to local
+      // Fallback
     }
 
     return null;
@@ -147,7 +147,6 @@ export class AdminExamBuilderService {
     const isUpdate = Boolean(config.id);
 
     try {
-      // Resolve exam_id foreign key for mock_tests
       const { data: examData } = await supabase
         .from('exams')
         .select('id')
@@ -250,6 +249,29 @@ export class AdminExamBuilderService {
       success: true,
       publishedConfig: res.data || publishedConfig,
     };
+  }
+
+  /**
+   * Archives an exam safely without deleting historical student attempt records.
+   */
+  public async archiveExam(examId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('mock_tests')
+        .update({
+          status: 'archived',
+          is_published: false,
+        })
+        .eq('id', examId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to archive exam.',
+      };
+    }
   }
 
   /**

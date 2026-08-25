@@ -11,7 +11,9 @@ import {
   HelpCircle,
   Sparkles,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Archive,
+  Eye
 } from 'lucide-react';
 import { ExamCategory } from '../../types';
 import { adminExamBuilderService, ExamBuilderConfig, SectionRuleConfig } from '../../services/adminExamBuilderService';
@@ -151,6 +153,20 @@ export const AdminExamBuilder: React.FC = () => {
     }
   };
 
+  const handleArchiveExam = async () => {
+    if (!currentExamId) return;
+    setIsSaving(true);
+    const res = await adminExamBuilderService.archiveExam(currentExamId);
+    setIsSaving(false);
+
+    if (res.success) {
+      setStatus('archived');
+      showToast(`Exam '${title}' archived safely without removing historical student attempts.`);
+    } else {
+      showToast(res.error || 'Failed to archive exam.');
+    }
+  };
+
   const handleDuplicateDraft = () => {
     const duplicate = adminExamBuilderService.duplicateExamAsDraft(currentConfig);
     setCurrentExamId(undefined);
@@ -204,12 +220,26 @@ export const AdminExamBuilder: React.FC = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           {currentExamId && (
-            <button
-              onClick={handleDuplicateDraft}
-              className="px-3 py-2 border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-main)] text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
-            >
-              <Copy className="w-3.5 h-3.5" /> Duplicate Draft
-            </button>
+            <>
+              <button
+                onClick={() => navigate(`/mock-test/${currentExamId}`)}
+                className="px-3 py-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 text-xs font-bold rounded-xl flex items-center gap-1.5"
+              >
+                <Eye className="w-3.5 h-3.5" /> Preview
+              </button>
+              <button
+                onClick={handleDuplicateDraft}
+                className="px-3 py-2 border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-main)] text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" /> Duplicate Draft
+              </button>
+              <button
+                onClick={handleArchiveExam}
+                className="px-3 py-2 border border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-bold rounded-xl flex items-center gap-1.5"
+              >
+                <Archive className="w-3.5 h-3.5" /> Archive
+              </button>
+            </>
           )}
           <button
             onClick={handleSaveDraft}
@@ -237,7 +267,11 @@ export const AdminExamBuilder: React.FC = () => {
             <div className="flex justify-between items-center">
               <h3 className="font-extrabold text-sm text-[var(--text-main)] uppercase tracking-wider">General Exam Settings</h3>
               <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                status === 'published'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : status === 'archived'
+                  ? 'bg-rose-100 text-rose-800'
+                  : 'bg-amber-100 text-amber-800'
               }`}>
                 {status}
               </span>
