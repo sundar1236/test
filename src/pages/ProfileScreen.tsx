@@ -12,7 +12,9 @@ export const ProfileScreen: React.FC = () => {
   const [name, setName] = useState(userProfile.name);
   const [email, setEmail] = useState(userProfile.email);
   const [targetExam, setTargetExam] = useState<ExamCategory>(userProfile.targetExam);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Deletion Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -20,11 +22,20 @@ export const ProfileScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile({ name, email, targetExam });
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsSaving(true);
+    setSaveError(null);
+
+    const success = await updateUserProfile({ name, email, targetExam });
+    setIsSaving(false);
+
+    if (success) {
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3500);
+    } else {
+      setSaveError('Failed to update target exam in database. Please try again.');
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -62,7 +73,7 @@ export const ProfileScreen: React.FC = () => {
       {/* Main Profile Details Card */}
       <div className="p-6 sm:p-8 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xs flex flex-col sm:flex-row items-center gap-6">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#0F4C81] to-[#2563EB] text-white flex items-center justify-center font-extrabold text-3xl shadow-md shrink-0">
-          {userProfile.name.charAt(0)}
+          {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
         </div>
 
         <div className="space-y-1.5 text-center sm:text-left flex-1">
@@ -80,7 +91,7 @@ export const ProfileScreen: React.FC = () => {
               <Calendar className="w-3.5 h-3.5 text-[#0F4C81] dark:text-[#38BDF8]" /> Joined {userProfile.joinedDate}
             </span>
             <span className="flex items-center gap-1">
-              <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank #{userProfile.globalRank}
+              <Trophy className="w-3.5 h-3.5 text-amber-500" /> Target: <strong className="text-[#0F4C81] dark:text-[#38BDF8]">{userProfile.targetExam}</strong>
             </span>
           </div>
         </div>
@@ -92,7 +103,12 @@ export const ProfileScreen: React.FC = () => {
           <h3 className="font-bold text-base text-[var(--text-main)]">Account Settings & Target Preferences</h3>
           {isSaved && (
             <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 animate-pulse">
-              <CheckCircle2 className="w-4 h-4" /> Changes Saved!
+              <CheckCircle2 className="w-4 h-4" /> Target Exam Updated & Synchronized!
+            </span>
+          )}
+          {saveError && (
+            <span className="text-xs font-bold text-rose-600 flex items-center gap-1">
+              <AlertTriangle className="w-4 h-4" /> {saveError}
             </span>
           )}
         </div>
@@ -137,9 +153,10 @@ export const ProfileScreen: React.FC = () => {
           <div className="pt-2 flex justify-end">
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-[#0F4C81] hover:bg-[#0B3A64] text-white font-bold text-xs shadow-md transition-all flex items-center gap-2"
+              disabled={isSaving}
+              className="px-6 py-3 rounded-xl bg-[#0F4C81] hover:bg-[#0B3A64] disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2"
             >
-              <Save className="w-4 h-4" /> Save Profile Changes
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Profile & Sync Platform
             </button>
           </div>
         </form>

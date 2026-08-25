@@ -16,7 +16,7 @@ interface AppContextType {
   testAttempts: TestAttemptResult[];
   saveTestAttempt: (attempt: TestAttemptResult) => void;
   userProfile: UserProfile;
-  updateUserProfile: (profile: Partial<UserProfile>) => void;
+  updateUserProfile: (profile: Partial<UserProfile>) => Promise<boolean>;
   supabaseSession: any;
   user: any;
   isLoadingAuth: boolean;
@@ -86,16 +86,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const profile = await authService.getCurrentProfile(userId);
       const resolvedRole: UserRole = (profile?.role as UserRole) || 'student';
+      const resolvedTargetExam: ExamCategory = (profile?.target_exam as ExamCategory) || 'SBI Clerk';
 
       setRole(resolvedRole);
       setUserProfileState({
+        id: userId,
         name: profile?.full_name || authUser?.user_metadata?.full_name || authUser?.email?.split('@')[0] || 'User',
         email: profile?.email || authUser?.email || '',
-        targetExam: 'SBI Clerk',
+        role: resolvedRole,
+        targetExam: resolvedTargetExam,
         joinedDate: new Date(profile?.created_at || Date.now()).toLocaleDateString(),
         testsTaken: 0,
-        averageAccuracy: 0,
-        allIndiaRank: 0,
+        avgAccuracy: 0,
+        globalRank: 1,
       });
 
       return resolvedRole;
@@ -111,6 +114,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return await loadUserProfile(targetUserId, user);
     }
     return role;
+  };
+
+  const updateUserProfile = async (updated: Partial<UserProfile>): Promise<boolean> => {
+    const activeUserId = user?.id;
+    const newTargetExam = updated.targetExam;
+
+    // 1. Optimistically prepare new state
+    const previousProfile = { ...userProfile };
+    const nextProfile = { ...userProfile, ...updated };
+
+    // 2. Persist to Supabase profiles table if authenticated user present
+    if (activeUserId) {
+      try {
+        const updatePayload: Record<string, any> = {};
+        if (updated.name) updatePayload.full_name = updated.name;
+        if (updated.email) updatePayload.email = updated.email;
+        if (newTargetExam) updatePayload.target_exam = newTargetExam;
+        updatePayload.updated_at = new Date().toISOString();
+
+        const { error } = await supabase
+          .from('profiles')
+          .update(updatePayload)
+          .eq('id', activeUserId);
+
+        if (error) {
+          console.error('Failed to persist target exam update to Supabase profile:', error.message);
+          setUserProfileState(previousProfile);
+          return false;
+        }
+      } catch (err) {
+        console.error('Error updating profile in Supabase:', err);
+        setUserProfileState(previousProfile);
+        return false;
+      }
+    }
+
+    // 3. Update centralized state and local cache
+    setUserProfileState(nextProfile);
+    if (activeUserId) {
+      localStorage.setItem(`bank_app_user_profile_${activeUserId}`, JSON.stringify(nextProfile));
+    }
+    return true;
   };
 
   const handleSignOut = async () => {
@@ -261,14 +306,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updated = [attempt, ...prev];
       localStorage.setItem('bank_app_test_attempts', JSON.stringify(updated));
       return updated;
-    });
-  };
-
-  const updateUserProfile = (updated: Partial<UserProfile>) => {
-    setUserProfileState((prev) => {
-      const newProfile = { ...prev, ...updated };
-      localStorage.setItem('bank_app_user_profile', JSON.stringify(newProfile));
-      return newProfile;
     });
   };
 
