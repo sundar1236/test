@@ -31,7 +31,48 @@ export interface QuestionFilters {
   pageSize?: number;
 }
 
+export interface ValidationCheckResult {
+  isValid: boolean;
+  errors: string[];
+}
+
 export const questionService = {
+  /**
+   * Strictly validates question integrity before persisting to database or publishing.
+   */
+  validateQuestionPayload(payload: CreateQuestionPayload): ValidationCheckResult {
+    const errors: string[] = [];
+
+    if (!payload.question_text || payload.question_text.trim().length < 10) {
+      errors.push('Question text is missing or shorter than 10 characters.');
+    }
+
+    if (!payload.options || payload.options.length < 4) {
+      errors.push('Question must have at least 4 answer choices.');
+    } else {
+      const emptyOptions = payload.options.filter((o) => !o.option_text || o.option_text.trim().length === 0);
+      if (emptyOptions.length > 0) {
+        errors.push(`${emptyOptions.length} option choice(s) contain empty text.`);
+      }
+
+      const correctOptions = payload.options.filter((o) => o.is_correct);
+      if (correctOptions.length === 0) {
+        errors.push('No answer option is marked as correct.');
+      } else if (correctOptions.length > 1) {
+        errors.push('Multiple answer options are marked as correct. Bank Clerk exams require exactly one correct key.');
+      }
+    }
+
+    if (!payload.exam_id) errors.push('Exam mapping is required.');
+    if (!payload.section_id) errors.push('Subject section mapping is required.');
+    if (!payload.topic_id) errors.push('Topic classification is required.');
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  },
+
   async getAllQuestions() {
     const { data, error } = await supabase
       .from('questions')
@@ -84,6 +125,11 @@ export const questionService = {
   },
 
   async createQuestion(payload: CreateQuestionPayload) {
+    const validation = this.validateQuestionPayload(payload);
+    if (!validation.isValid) {
+      throw new Error(`Validation Error: ${validation.errors.join(' ')}`);
+    }
+
     const { options, ...qData } = payload;
     const { data: qResult, error: qError } = await supabase
       .from('questions')
@@ -117,7 +163,6 @@ export const questionService = {
     }
 
     if (options && options.length > 0) {
-      // Delete existing options and insert updated ones
       await supabase.from('question_options').delete().eq('question_id', questionId);
       const formattedOpts = options.map((opt) => ({
         ...opt,
