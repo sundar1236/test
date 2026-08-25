@@ -23,6 +23,7 @@ import { CategoryManagement } from './pages/CategoryManagement';
 import { ValidationQueue } from './pages/ValidationQueue';
 import { AuditLogScreen } from './pages/AuditLogScreen';
 import { DesignSystemDoc } from './pages/DesignSystemDoc';
+import { AdminDesignSettings } from './pages/AdminDesignSettings';
 
 // Admin Exam Builder & Import Center Components
 import { AdminExamBuilder } from './components/admin/AdminExamBuilder';
@@ -115,6 +116,10 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/admin/dashboard"
           element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminDashboard />}
+        />
+        <Route
+          path="/admin/settings/design"
+          element={!isAdminOrReviewer ? <Navigate to="/dashboard" replace /> : <AdminDesignSettings />}
         />
         <Route
           path="/admin/exam-builder"
