@@ -185,6 +185,7 @@ export const progressService = {
     weakTopics.forEach((wt, idx) => {
       recs.push({
         id: `rec-${idx + 1}`,
+        type: 'weak_topic',
         topicName: wt.topicName,
         sectionName: wt.sectionName,
         recommendedQuestionCount: wt.performanceLevel === 'Weak' ? 25 : 15,
@@ -196,6 +197,7 @@ export const progressService = {
     if (recs.length === 0 && attempts.length > 0) {
       recs.push({
         id: 'rec-default',
+        type: 'speed_improvement',
         topicName: 'Full Speed Booster Mock',
         sectionName: 'All Sections',
         recommendedQuestionCount: 30,
