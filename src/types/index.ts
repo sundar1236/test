@@ -148,6 +148,7 @@ export interface UserProfile {
   avgAccuracy: number;
   globalRank: number;
   targetExam: ExamCategory;
+  targetExamId?: string | null;
 }
 
 // --- Phase 3E Dashboard & Performance Interfaces ---

@@ -150,7 +150,7 @@ export const authService = {
   async getCurrentProfile(userId: string) {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, exams:target_exam_id(id, code, title, is_active)')
       .eq('id', userId)
       .single();
 

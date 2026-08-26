@@ -86,7 +86,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const profile = await authService.getCurrentProfile(userId);
       const resolvedRole: UserRole = (profile?.role as UserRole) || 'student';
-      const resolvedTargetExam: ExamCategory = (profile?.target_exam as ExamCategory) || 'SBI Clerk';
+      const joinedExamTitle = profile?.exams?.title;
+      const resolvedTargetExam: ExamCategory = (joinedExamTitle as ExamCategory) || (profile?.target_exam as ExamCategory) || 'SBI Clerk';
 
       setRole(resolvedRole);
       setUserProfileState({
@@ -95,6 +96,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         email: profile?.email || authUser?.email || '',
         role: resolvedRole,
         targetExam: resolvedTargetExam,
+        targetExamId: profile?.target_exam_id || profile?.exams?.id || null,
         joinedDate: new Date(profile?.created_at || Date.now()).toLocaleDateString(),
         testsTaken: 0,
         avgAccuracy: 0,
@@ -119,6 +121,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateUserProfile = async (updated: Partial<UserProfile>): Promise<boolean> => {
     const activeUserId = user?.id;
     const newTargetExam = updated.targetExam;
+    const newTargetExamId = updated.targetExamId;
 
     // 1. Optimistically prepare new state
     const previousProfile = { ...userProfile };
@@ -131,6 +134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (updated.name) updatePayload.full_name = updated.name;
         if (updated.email) updatePayload.email = updated.email;
         if (newTargetExam) updatePayload.target_exam = newTargetExam;
+        if (newTargetExamId) updatePayload.target_exam_id = newTargetExamId;
         updatePayload.updated_at = new Date().toISOString();
 
         const { error } = await supabase

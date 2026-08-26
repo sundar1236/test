@@ -14,6 +14,7 @@ export interface Database {
           email: string;
           role: UserRole;
           target_exam: string;
+          target_exam_id?: string | null;
           joined_date: string;
           created_at: string;
           updated_at: string;

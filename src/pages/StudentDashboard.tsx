@@ -1,17 +1,39 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { progressService } from '../services/progressService';
+import { examService } from '../services/examService';
 import {
   Trophy,
   AlertTriangle,
   Play,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { testAttempts, userProfile, bookmarks } = useApp();
+
+  const [dbExams, setDbExams] = useState<any[]>([]);
+  useEffect(() => {
+    examService.getExams().then((data) => {
+      if (data) setDbExams(data);
+    }).catch(() => {});
+  }, []);
+
+  const currentTargetExamObj = useMemo(() => {
+    if (userProfile.targetExamId && dbExams.length > 0) {
+      return dbExams.find((e) => e.id === userProfile.targetExamId) || null;
+    }
+    if (dbExams.length > 0) {
+      return dbExams.find((e) => e.title === userProfile.targetExam) || null;
+    }
+    return null;
+  }, [userProfile.targetExamId, userProfile.targetExam, dbExams]);
+
+  const isExamUnavailable = currentTargetExamObj && currentTargetExamObj.is_active === false;
+  const displayExamTitle = currentTargetExamObj ? currentTargetExamObj.title : userProfile.targetExam || 'SBI Clerk';
 
   // Aggregate KPI Metrics
   const stats = useMemo(() => {
@@ -40,10 +62,18 @@ export const StudentDashboard: React.FC = () => {
       {/* Top Banner */}
       <div className="p-5 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0F4C81] to-[#2563EB] text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/15 text-xs font-extrabold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-            <span>Target Exam: {userProfile.targetExam || 'SBI Clerk'}</span>
-          </div>
+          {isExamUnavailable ? (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-rose-500/30 text-rose-100 text-xs font-extrabold border border-rose-300/40">
+              <AlertCircle className="w-4 h-4 text-rose-300 shrink-0" />
+              <span>Your selected exam is currently unavailable. Please choose another exam in Profile Settings.</span>
+              <button onClick={() => navigate('/profile')} className="ml-2 underline hover:text-white">Choose Exam</button>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/15 text-xs font-extrabold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span>Target Exam: {displayExamTitle}</span>
+            </div>
+          )}
           <h1 className="text-xl sm:text-3xl font-black">Welcome Back, {userProfile.name}!</h1>
           <p className="text-xs sm:text-sm text-blue-100 max-w-xl font-medium leading-relaxed">
             You are currently ranked <strong className="text-white">#{userProfile.globalRank}</strong> among aspirants. Continue practicing to boost your accuracy and percentile.

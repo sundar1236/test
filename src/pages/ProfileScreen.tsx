@@ -35,7 +35,10 @@ export const ProfileScreen: React.FC = () => {
     setIsSaving(true);
     setSaveError(null);
 
-    const success = await updateUserProfile({ name, email, targetExam });
+    const matchedExamObj = dbExams.find((ex) => ex.title === targetExam || ex.code === targetExam);
+    const targetExamId = matchedExamObj ? matchedExamObj.id : userProfile.targetExamId;
+
+    const success = await updateUserProfile({ name, email, targetExam, targetExamId });
     setIsSaving(false);
 
     if (success) {
