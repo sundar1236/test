@@ -32,9 +32,7 @@ export const Login: React.FC = () => {
         if (
           resolvedRole === 'admin' ||
           resolvedRole === 'super_admin' ||
-          resolvedRole === 'question_reviewer' ||
-          identifier.trim().toLowerCase() === 'sundhar1301@gmail.com' ||
-          identifier.trim().toLowerCase() === 'admin'
+          resolvedRole === 'question_reviewer'
         ) {
           navigate('/admin/dashboard');
         } else {
