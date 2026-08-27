@@ -297,104 +297,116 @@ class ImportService {
 
   /**
    * Commits an inspected import batch to the database with selected duplicate resolutions.
+   * Processes large imports in safe chunks of 100 records to prevent browser freezing.
    * Ensures all imported questions default to 'draft' status.
    */
   public async commitImportBatch(
     preview: ImportPreviewSummary,
     resolutions: Record<number, DuplicateResolution>,
     adminId: string = 'a1',
-    importerName: string = 'Admin User'
+    importerName: string = 'Admin User',
+    onProgress?: (processed: number, total: number) => void
   ): Promise<BatchCommitResult> {
     let success = 0;
     let failed = 0;
     let duplicateHandled = 0;
     const createdIds: string[] = [];
+    const totalRecords = preview.records.length;
 
-    for (const record of preview.records) {
-      if (!record.isValid) {
-        failed++;
-        continue;
-      }
+    const chunkSize = 100;
+    for (let i = 0; i < totalRecords; i += chunkSize) {
+      const chunk = preview.records.slice(i, i + chunkSize);
 
-      const res = resolutions[record.rowNumber] || record.resolution;
+      for (const record of chunk) {
+        if (!record.isValid) {
+          failed++;
+          continue;
+        }
 
-      if (record.duplicateResult.isDuplicate && res === 'skip') {
-        duplicateHandled++;
-        continue;
-      }
+        const res = resolutions[record.rowNumber] || record.resolution;
 
-      // Map raw data to question entity
-      const normText = normalizeQuestionText(record.rawData.questionText);
-      const qHash = generateQuestionHash(normText);
+        if (record.duplicateResult.isDuplicate && res === 'skip') {
+          duplicateHandled++;
+          continue;
+        }
 
-      const optionsList = [
-        { option_key: 'A', option_text: record.rawData.optionA, is_correct: record.rawData.correctAnswer === 'A' },
-        { option_key: 'B', option_text: record.rawData.optionB, is_correct: record.rawData.correctAnswer === 'B' },
-        { option_key: 'C', option_text: record.rawData.optionC, is_correct: record.rawData.correctAnswer === 'C' },
-        { option_key: 'D', option_text: record.rawData.optionD, is_correct: record.rawData.correctAnswer === 'D' },
-      ];
+        // Map raw data to question entity
+        const normText = normalizeQuestionText(record.rawData.questionText);
+        const qHash = generateQuestionHash(normText);
 
-      if (record.rawData.optionE) {
-        optionsList.push({ option_key: 'E', option_text: record.rawData.optionE, is_correct: record.rawData.correctAnswer === 'E' });
-      }
+        const optionsList = [
+          { option_key: 'A', option_text: record.rawData.optionA, is_correct: record.rawData.correctAnswer === 'A' },
+          { option_key: 'B', option_text: record.rawData.optionB, is_correct: record.rawData.correctAnswer === 'B' },
+          { option_key: 'C', option_text: record.rawData.optionC, is_correct: record.rawData.correctAnswer === 'C' },
+          { option_key: 'D', option_text: record.rawData.optionD, is_correct: record.rawData.correctAnswer === 'D' },
+        ];
 
-      try {
-        // Fetch dynamic UUID mappings for Exam, Section, and Topic
-        let resolvedExamId = '00000000-0000-0000-0000-000000000001';
-        let resolvedSectionId = '00000000-0000-0000-0000-000000000002';
-        let resolvedTopicId = '00000000-0000-0000-0000-000000000003';
+        if (record.rawData.optionE) {
+          optionsList.push({ option_key: 'E', option_text: record.rawData.optionE, is_correct: record.rawData.correctAnswer === 'E' });
+        }
 
         try {
-          const { data: exData } = await supabase
-            .from('exams')
-            .select('id')
-            .or(`code.ilike.%${record.rawData.examCode}%,title.ilike.%${record.rawData.examCode}%`)
-            .limit(1)
-            .maybeSingle();
-          if (exData?.id) resolvedExamId = exData.id;
+          // Fetch dynamic UUID mappings for Exam, Section, and Topic
+          let resolvedExamId = '00000000-0000-0000-0000-000000000001';
+          let resolvedSectionId = '00000000-0000-0000-0000-000000000002';
+          let resolvedTopicId = '00000000-0000-0000-0000-000000000003';
 
-          const { data: secData } = await supabase
-            .from('sections')
-            .select('id')
-            .or(`name.ilike.%${record.rawData.sectionName}%,code.ilike.%${record.rawData.sectionName}%`)
-            .limit(1)
-            .maybeSingle();
-          if (secData?.id) resolvedSectionId = secData.id;
+          try {
+            const { data: exData } = await supabase
+              .from('exams')
+              .select('id')
+              .or(`code.ilike.%${record.rawData.examCode}%,title.ilike.%${record.rawData.examCode}%`)
+              .limit(1)
+              .maybeSingle();
+            if (exData?.id) resolvedExamId = exData.id;
 
-          const { data: topData } = await supabase
-            .from('topics')
-            .select('id')
-            .ilike('title', `%${record.rawData.topicTitle}%`)
-            .limit(1)
-            .maybeSingle();
-          if (topData?.id) resolvedTopicId = topData.id;
-        } catch {
-          // Fallback to resolved UUIDs
-        }
+            const { data: secData } = await supabase
+              .from('sections')
+              .select('id')
+              .or(`name.ilike.%${record.rawData.sectionName}%,code.ilike.%${record.rawData.sectionName}%`)
+              .limit(1)
+              .maybeSingle();
+            if (secData?.id) resolvedSectionId = secData.id;
 
-        // Staging status MUST default to 'draft' or 'under_review'
-        const newQuestion = await questionService.createQuestion({
-          exam_id: resolvedExamId,
-          phase: (record.rawData.phase === 'mains' ? 'mains' : 'prelims') as ExamPhase,
-          section_id: resolvedSectionId,
-          topic_id: resolvedTopicId,
-          question_text: record.rawData.questionText,
-          question_hash: qHash,
-          normalized_text: normText,
-          difficulty: (record.rawData.difficulty || 'moderate') as DifficultyLevel,
-          explanation: record.rawData.explanation || '',
-          status: 'draft' as QuestionStatus,
-          options: optionsList
-        });
+            const { data: topData } = await supabase
+              .from('topics')
+              .select('id')
+              .ilike('title', `%${record.rawData.topicTitle}%`)
+              .limit(1)
+              .maybeSingle();
+            if (topData?.id) resolvedTopicId = topData.id;
+          } catch {
+            // Fallback to resolved UUIDs
+          }
 
-        if (newQuestion) {
-          success++;
-          createdIds.push(newQuestion.id);
-        } else {
+          // Staging status MUST default to 'draft' or 'under_review'
+          const newQuestion = await questionService.createQuestion({
+            exam_id: resolvedExamId,
+            phase: (record.rawData.phase === 'mains' ? 'mains' : 'prelims') as ExamPhase,
+            section_id: resolvedSectionId,
+            topic_id: resolvedTopicId,
+            question_text: record.rawData.questionText,
+            question_hash: qHash,
+            normalized_text: normText,
+            difficulty: (record.rawData.difficulty || 'moderate') as DifficultyLevel,
+            explanation: record.rawData.explanation || '',
+            status: 'draft' as QuestionStatus,
+            options: optionsList
+          });
+
+          if (newQuestion) {
+            success++;
+            createdIds.push(newQuestion.id);
+          } else {
+            failed++;
+          }
+        } catch (e) {
           failed++;
         }
-      } catch (e) {
-        failed++;
+      }
+
+      if (onProgress) {
+        onProgress(Math.min(i + chunkSize, totalRecords), totalRecords);
       }
     }
 

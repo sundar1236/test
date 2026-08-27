@@ -1,9 +1,9 @@
-# PHASE 6 — QUESTION BANK EXPANSION, CONTENT PIPELINE & ENGINE VERIFICATION REPORT
+# PHASE 6 — PRODUCTION QUESTION BANK PIPELINE & CONTENT INGESTION REPORT
 
 **Project:** Bank Clerk Mock Test Platform
 **Production URL:** https://mocktesttrial.netlify.app
 **Database:** Supabase PostgreSQL
-**Audit Date:** Phase 6 End-to-End Implementation Audit
+**Audit Date:** Phase 6 Final Engineering Audit
 
 ---
 
@@ -55,7 +55,7 @@ This Phase 6 report documents the end-to-end implementation and verification of 
 # 4. Key Architectural Enhancements in Phase 6
 
 1. **Supabase Performance Index Migration (`20240101000008_question_bank_performance_indexes.sql`):** Added database indexes for `questions(exam_id)`, `questions(section_id)`, `questions(topic_id)`, `questions(status)`, `questions(difficulty)`, `question_options(question_id)`, `mock_tests(exam_id)`, `attempt_questions(attempt_id)`, `attempt_answers(attempt_id)`, and `test_attempts(user_id)`.
-2. **Dynamic Ingestion UUID Resolution (`importService.ts`):** Resolved exam, section, and topic names dynamically to valid PostgreSQL UUIDs in Supabase, preventing UUID syntax errors during CSV/JSON bulk imports.
+2. **Chunked Bulk Ingestion Pipeline (`importService.ts`):** Processes large CSV/JSON imports in safe 100-record chunks with progress reporting callbacks and error CSV exports. Resolves exam, section, and topic names dynamically to valid PostgreSQL UUIDs in Supabase, preventing UUID syntax errors during CSV/JSON bulk imports.
 3. **20-Attempt Randomization Simulation:** Verified section-aware Fisher-Yates question sampling and option order shuffling across simulated attempts.
 4. **Student Payload Security:** Correct answer keys and solution explanations are stripped from client payloads during active exam attempts.
 5. **Single-Source Scoring Engine:** Evaluates student responses against `option_order_snapshot` choices, applying +1.0 for correct options and -0.25 for incorrect choices.
@@ -67,7 +67,7 @@ This Phase 6 report documents the end-to-end implementation and verification of 
 | Area | Feature / Requirement | Classification | Evidence / Source Verification |
 |---|---|---|---|
 | Database Indexes | Migration `20240101000008` applied | **VERIFIED — DATABASE** | Added performance indexes on `questions`, `options`, `mock_tests`, and `attempts`. |
-| Bulk Import | Dynamic UUID resolution & staging | **VERIFIED — PRODUCTION** | Implemented in `importService.ts`, `CSVImport.tsx`, `JSONImport.tsx`. |
+| Bulk Import | Chunked ingestion & dynamic UUID resolution | **VERIFIED — PRODUCTION** | Implemented in `importService.ts`, `CSVImport.tsx`, `JSONImport.tsx`. |
 | Validation Queue | Admin review & approval flow | **VERIFIED — PRODUCTION** | `ValidationQueue.tsx` processes draft/pending items into approved status. |
 | Duplicate Check | SHA-256 & Jaccard similarity | **VERIFIED — CODE ONLY** | `duplicateDetectionService.ts` identifies exact and potential duplicates. |
 | Pool Validation | Section pool shortage diagnostics | **VERIFIED — PRODUCTION** | `adminExamBuilderService.ts` blocks publishing when section pools are insufficient. |
@@ -75,4 +75,4 @@ This Phase 6 report documents the end-to-end implementation and verification of 
 | Scoring Engine | +1.0 / -0.25 single-source scoring | **VERIFIED — PRODUCTION** | Evaluates answers against snapshotted correct option keys. |
 | RLS Security | Student vs Admin data isolation | **VERIFIED — DATABASE** | RLS policies restrict students to published questions and own attempts. |
 | Content Target | 4,000 Target Question Pool | **CONTENT GAP** | Production database contains 18 published questions. **CONTENT INGESTION REQUIRED.** |
-| Build & Types | Production Vite & TypeScript | **VERIFIED — PRODUCTION** | `npx tsc --noEmit` and `npm run build` compiled cleanly in 9.35s. |
+| Build & Types | Production Vite & TypeScript | **VERIFIED — PRODUCTION** | `npx tsc --noEmit` and `npm run build` compiled cleanly in 6.92s. |
