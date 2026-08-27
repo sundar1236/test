@@ -2,6 +2,7 @@
 // Handles CSV and JSON parsing, schema validation, quality score checks, dry-run previews, batch execution, error logging, and rollbacks.
 
 import { QuestionStatus, DifficultyLevel, ExamPhase } from '../types/database';
+import { supabase } from '../lib/supabase';
 import { detectDuplicateQuestion, generateQuestionHash, normalizeQuestionText, DuplicateCheckResult, DuplicateResolution } from './duplicateDetectionService';
 import { questionService } from './questionService';
 import { adminService } from './adminService';
@@ -338,12 +339,45 @@ class ImportService {
       }
 
       try {
-        // Default status MUST be 'draft'
+        // Fetch dynamic UUID mappings for Exam, Section, and Topic
+        let resolvedExamId = '00000000-0000-0000-0000-000000000001';
+        let resolvedSectionId = '00000000-0000-0000-0000-000000000002';
+        let resolvedTopicId = '00000000-0000-0000-0000-000000000003';
+
+        try {
+          const { data: exData } = await supabase
+            .from('exams')
+            .select('id')
+            .or(`code.ilike.%${record.rawData.examCode}%,title.ilike.%${record.rawData.examCode}%`)
+            .limit(1)
+            .maybeSingle();
+          if (exData?.id) resolvedExamId = exData.id;
+
+          const { data: secData } = await supabase
+            .from('sections')
+            .select('id')
+            .or(`name.ilike.%${record.rawData.sectionName}%,code.ilike.%${record.rawData.sectionName}%`)
+            .limit(1)
+            .maybeSingle();
+          if (secData?.id) resolvedSectionId = secData.id;
+
+          const { data: topData } = await supabase
+            .from('topics')
+            .select('id')
+            .ilike('title', `%${record.rawData.topicTitle}%`)
+            .limit(1)
+            .maybeSingle();
+          if (topData?.id) resolvedTopicId = topData.id;
+        } catch {
+          // Fallback to resolved UUIDs
+        }
+
+        // Staging status MUST default to 'draft' or 'under_review'
         const newQuestion = await questionService.createQuestion({
-          exam_id: 'e1', // mapped to SBI Clerk by default or dynamic
+          exam_id: resolvedExamId,
           phase: (record.rawData.phase === 'mains' ? 'mains' : 'prelims') as ExamPhase,
-          section_id: record.rawData.sectionName.toLowerCase().includes('quant') ? 'sec2' : 'sec1',
-          topic_id: 'top1',
+          section_id: resolvedSectionId,
+          topic_id: resolvedTopicId,
           question_text: record.rawData.questionText,
           question_hash: qHash,
           normalized_text: normText,
