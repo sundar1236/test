@@ -60,6 +60,10 @@ export const AppRoutes: React.FC = () => {
         path="/exam/:testId"
         element={!isAuthenticated ? <Navigate to="/login" replace /> : <ExamSimulatorScreen />}
       />
+      <Route
+        path="/topic-test/:examId/:sectionId/:topicId"
+        element={!isAuthenticated ? <Navigate to="/login" replace /> : <ExamSimulatorScreen />}
+      />
 
       {/* Main Layout routes */}
       <Route element={<MainLayout />}>

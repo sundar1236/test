@@ -232,26 +232,27 @@ export const attemptService = {
    * Section-aware question selection and order/option randomization.
    * Guaranteed to return non-empty question list (falls back to mockQuestions).
    */
-  async generateRandomizedQuestionsForTest(testMeta: MockTestMeta): Promise<SecureExamQuestion[]> {
+  async generateRandomizedQuestionsForTest(testMeta: MockTestMeta, topicId?: string): Promise<SecureExamQuestion[]> {
     const generated: SecureExamQuestion[] = [];
     const sections = Array.isArray(testMeta.sections) ? testMeta.sections : [];
 
     try {
-      const { data: eligibleDbQuestions } = await supabase
+      let query = supabase
         .from('questions')
         .select('*, question_options(id, option_key, option_text, is_correct), sections(name), topics(title)')
         .eq('status', 'published');
 
+      if (topicId) {
+        query = query.eq('topic_id', topicId);
+      }
+
+      const { data: eligibleDbQuestions } = await query;
+
       if (eligibleDbQuestions && eligibleDbQuestions.length > 0) {
-        sections.forEach((sec: any) => {
-          const secName = typeof sec === 'string' ? sec : sec.sectionName;
-          const reqCount = typeof sec === 'object' ? sec.questionCount : 10;
-
-          const matchPool = eligibleDbQuestions.filter((q: any) => q.sections?.name === secName);
-          const pool = matchPool.length > 0 ? matchPool : eligibleDbQuestions;
-
-          // Fisher-Yates shuffle
-          const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+        if (topicId) {
+          // Topic test question generation
+          const reqCount = testMeta.totalQuestions || 10;
+          const shuffledPool = [...eligibleDbQuestions].sort(() => Math.random() - 0.5);
           const selected = shuffledPool.slice(0, Math.min(reqCount, shuffledPool.length));
 
           selected.forEach((q: any) => {
@@ -261,23 +262,58 @@ export const attemptService = {
               text: o.option_text || o.text,
             }));
 
-            // Option randomization
             const randomizedOpts = [...rawOpts].sort(() => Math.random() - 0.5);
 
             generated.push({
               id: q.id,
               sectionId: q.section_id || 'sec-gen',
-              sectionName: secName,
-              topicId: q.topic_id || 't-gen',
-              topicTitle: q.topics?.title || 'General',
+              sectionName: q.sections?.name || 'General',
+              topicId: q.topic_id || topicId,
+              topicTitle: q.topics?.title || 'Topic Quiz',
               difficulty: q.difficulty || 'Moderate',
               questionText: q.question_text,
               options: randomizedOpts,
             });
           });
-        });
 
-        if (generated.length > 0) return generated;
+          if (generated.length > 0) return generated;
+        } else {
+          sections.forEach((sec: any) => {
+            const secName = typeof sec === 'string' ? sec : sec.sectionName;
+            const reqCount = typeof sec === 'object' ? sec.questionCount : 10;
+
+            const matchPool = eligibleDbQuestions.filter((q: any) => q.sections?.name === secName);
+            const pool = matchPool.length > 0 ? matchPool : eligibleDbQuestions;
+
+            // Fisher-Yates shuffle
+            const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+            const selected = shuffledPool.slice(0, Math.min(reqCount, shuffledPool.length));
+
+            selected.forEach((q: any) => {
+              const rawOpts = (q.question_options || []).map((o: any) => ({
+                id: o.id,
+                option_key: o.option_key || o.id,
+                text: o.option_text || o.text,
+              }));
+
+              // Option randomization
+              const randomizedOpts = [...rawOpts].sort(() => Math.random() - 0.5);
+
+              generated.push({
+                id: q.id,
+                sectionId: q.section_id || 'sec-gen',
+                sectionName: secName,
+                topicId: q.topic_id || 't-gen',
+                topicTitle: q.topics?.title || 'General',
+                difficulty: q.difficulty || 'Moderate',
+                questionText: q.question_text,
+                options: randomizedOpts,
+              });
+            });
+          });
+
+          if (generated.length > 0) return generated;
+        }
       }
     } catch {
       // Fallthrough to local fallback

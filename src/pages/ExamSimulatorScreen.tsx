@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const ExamSimulatorScreen: React.FC = () => {
-  const { testId } = useParams<{ testId: string }>();
+  const { testId, examId, sectionId, topicId } = useParams<{ testId?: string; examId?: string; sectionId?: string; topicId?: string }>();
   const navigate = useNavigate();
   const { bookmarks, toggleBookmark, user } = useApp();
 
@@ -46,19 +46,56 @@ export const ExamSimulatorScreen: React.FC = () => {
     async function initExam() {
       try {
         setLoading(true);
-        const attemptData = await attemptService.startAttempt(currentTestId, activeUserId);
-        if (!isMounted) return;
+        if (topicId) {
+          // Topic-scoped test attempt initialization
+          const topicMeta: MockTestMeta = {
+            id: `topic-test-${topicId}`,
+            title: `Topic Quiz: ${topicId}`,
+            exam: 'SBI Clerk',
+            phase: 'prelims',
+            durationMinutes: 15,
+            timingMode: 'time_based',
+            totalQuestions: 10,
+            totalMarks: 10,
+            sections: [{ id: 'sec-1', sectionId: sectionId || 'sec-1', sectionName: 'Topic Practice', questionCount: 10, marksPerQuestion: 1, negativeMarks: 0.25 }],
+            attemptsCount: 0,
+            isFreeSample: true,
+            isPublished: true,
+          };
 
-        setTestMeta(attemptData.testMeta);
-        setQuestions(attemptData.questions);
-        setAttemptId(attemptData.attemptId);
-        setStartedAtMs(attemptData.startedAtMs);
-        setDurationMinutes(attemptData.durationMinutes);
-        setAnswersMap(attemptData.userAnswers);
+          const questions = await attemptService.generateRandomizedQuestionsForTest(topicMeta, topicId);
+          if (!isMounted) return;
 
-        if (attemptData.questions.length > 0) {
-          const firstSec = attemptData.questions[0].sectionName;
-          setActiveSectionName(firstSec);
+          setTestMeta(topicMeta);
+          setQuestions(questions);
+          setAttemptId(`att-topic-${Date.now()}`);
+          setStartedAtMs(Date.now());
+          setDurationMinutes(15);
+
+          const initialAns: Record<string, UserAnswerState> = {};
+          questions.forEach((q) => {
+            initialAns[q.id] = { questionId: q.id, selectedOptionId: null, status: 'not_visited', timeSpentSeconds: 0 };
+          });
+          setAnswersMap(initialAns);
+
+          if (questions.length > 0) {
+            setActiveSectionName(questions[0].sectionName);
+          }
+        } else {
+          const attemptData = await attemptService.startAttempt(currentTestId, activeUserId);
+          if (!isMounted) return;
+
+          setTestMeta(attemptData.testMeta);
+          setQuestions(attemptData.questions);
+          setAttemptId(attemptData.attemptId);
+          setStartedAtMs(attemptData.startedAtMs);
+          setDurationMinutes(attemptData.durationMinutes);
+          setAnswersMap(attemptData.userAnswers);
+
+          if (attemptData.questions.length > 0) {
+            const firstSec = attemptData.questions[0].sectionName;
+            setActiveSectionName(firstSec);
+          }
         }
       } catch (err) {
         console.error('Failed to initialize test attempt', err);
@@ -71,7 +108,7 @@ export const ExamSimulatorScreen: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [testId, activeUserId]);
+  }, [testId, topicId, sectionId, examId, activeUserId]);
 
   const handleFinalSubmission = useCallback(
     async (isTimeoutTrigger: boolean = false) => {
