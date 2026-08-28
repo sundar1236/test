@@ -186,6 +186,43 @@ class ImportService {
     let nearDupCount = 0;
     let totalQuality = 0;
 
+    // Pre-fetch metadata maps for dry-run validation
+    let examMap: Record<string, string> = {};
+    let sectionMap: Record<string, string> = {};
+    let topicMap: Record<string, string> = {};
+
+    try {
+      const { data: dbExams } = await supabase.from('exams').select('id, code, title');
+      if (dbExams) {
+        dbExams.forEach((e) => {
+          examMap[e.id] = e.id;
+          if (e.code) examMap[e.code.toLowerCase().trim()] = e.id;
+          if (e.title) examMap[e.title.toLowerCase().trim()] = e.id;
+          const cleanTitle = e.title.toLowerCase().replace(/20\d\d/g, '').trim();
+          if (cleanTitle) examMap[cleanTitle] = e.id;
+        });
+      }
+
+      const { data: dbSections } = await supabase.from('sections').select('id, code, name');
+      if (dbSections) {
+        dbSections.forEach((s) => {
+          sectionMap[s.id] = s.id;
+          if (s.code) sectionMap[s.code.toLowerCase().trim()] = s.id;
+          if (s.name) sectionMap[s.name.toLowerCase().trim()] = s.id;
+        });
+      }
+
+      const { data: dbTopics } = await supabase.from('topics').select('id, title');
+      if (dbTopics) {
+        dbTopics.forEach((t) => {
+          topicMap[t.id] = t.id;
+          if (t.title) topicMap[t.title.toLowerCase().trim()] = t.id;
+        });
+      }
+    } catch {
+      // Fallthrough
+    }
+
     for (const raw of records) {
       const errors: ImportError[] = [];
       let qualityScore = 100;
@@ -200,6 +237,50 @@ class ImportService {
           suggestedFix: 'Provide detailed question statement.'
         });
         qualityScore -= 30;
+      }
+
+      // Metadata Resolution Verification
+      const rawExamKey = (raw.examCode || '').toLowerCase().trim();
+      const cleanExamKey = rawExamKey.replace(/20\d\d/g, '').trim();
+      const resolvedExamId = examMap[rawExamKey] || examMap[cleanExamKey] || examMap[rawExamKey.replace(/[\s-_]+/g, '')];
+
+      if (!resolvedExamId) {
+        errors.push({
+          rowNumber: raw.rowNumber,
+          field: 'Exam',
+          errorType: 'METADATA_MISMATCH',
+          message: `Exam '${raw.examCode}' could not be resolved to a valid database UUID.`,
+          suggestedFix: 'Ensure exam title or code matches active metadata series (e.g. SBI Clerk).'
+        });
+        qualityScore -= 25;
+      }
+
+      const rawSecKey = (raw.sectionName || '').toLowerCase().trim();
+      const resolvedSecId = sectionMap[rawSecKey] || sectionMap[rawSecKey.replace(/[\s-_]+/g, '')];
+
+      if (!resolvedSecId) {
+        errors.push({
+          rowNumber: raw.rowNumber,
+          field: 'Section',
+          errorType: 'METADATA_MISMATCH',
+          message: `Section '${raw.sectionName}' could not be resolved to a valid database UUID.`,
+          suggestedFix: 'Ensure section matches standard subject sections (e.g. Quantitative Aptitude).'
+        });
+        qualityScore -= 25;
+      }
+
+      const rawTopKey = (raw.topicTitle || '').toLowerCase().trim();
+      const resolvedTopId = topicMap[rawTopKey];
+
+      if (!resolvedTopId) {
+        errors.push({
+          rowNumber: raw.rowNumber,
+          field: 'Topic',
+          errorType: 'METADATA_MISMATCH',
+          message: `Topic '${raw.topicTitle}' could not be resolved to a valid database UUID.`,
+          suggestedFix: 'Create topic in Metadata Management or match existing topic title.'
+        });
+        qualityScore -= 15;
       }
 
       if (!raw.optionA || !raw.optionB || !raw.optionC || !raw.optionD) {
@@ -260,7 +341,7 @@ class ImportService {
       if (dupResult.duplicateType === 'exact') exactDupCount++;
       if (dupResult.duplicateType === 'near' || dupResult.duplicateType === 'potential') nearDupCount++;
 
-      const isValid = errors.filter(e => e.errorType === 'MISSING_FIELD' || e.errorType === 'INVALID_VALUE').length === 0;
+      const isValid = errors.filter(e => e.errorType === 'MISSING_FIELD' || e.errorType === 'INVALID_VALUE' || e.errorType === 'METADATA_MISMATCH').length === 0;
 
       if (isValid) validCount++;
       else invalidCount++;
@@ -313,6 +394,47 @@ class ImportService {
     const createdIds: string[] = [];
     const totalRecords = preview.records.length;
 
+    // Pre-fetch metadata maps ONCE before batch loop execution
+    let examMap: Record<string, string> = {};
+    let sectionMap: Record<string, string> = {};
+    let topicMap: Record<string, string> = {};
+
+    try {
+      const { data: dbExams } = await supabase.from('exams').select('id, code, title');
+      if (dbExams) {
+        dbExams.forEach((e) => {
+          examMap[e.id] = e.id;
+          if (e.code) examMap[e.code.toLowerCase().trim()] = e.id;
+          if (e.title) examMap[e.title.toLowerCase().trim()] = e.id;
+          const cleanTitle = e.title.toLowerCase().replace(/20\d\d/g, '').trim();
+          if (cleanTitle) examMap[cleanTitle] = e.id;
+        });
+      }
+
+      const { data: dbSections } = await supabase.from('sections').select('id, code, name');
+      if (dbSections) {
+        dbSections.forEach((s) => {
+          sectionMap[s.id] = s.id;
+          if (s.code) sectionMap[s.code.toLowerCase().trim()] = s.id;
+          if (s.name) sectionMap[s.name.toLowerCase().trim()] = s.id;
+        });
+      }
+
+      const { data: dbTopics } = await supabase.from('topics').select('id, title');
+      if (dbTopics) {
+        dbTopics.forEach((t) => {
+          topicMap[t.id] = t.id;
+          if (t.title) topicMap[t.title.toLowerCase().trim()] = t.id;
+        });
+      }
+    } catch {
+      // Fallthrough
+    }
+
+    const defaultExamUuid = Object.values(examMap)[0] || null;
+    const defaultSectionUuid = Object.values(sectionMap)[0] || null;
+    const defaultTopicUuid = Object.values(topicMap)[0] || null;
+
     const chunkSize = 100;
     for (let i = 0; i < totalRecords; i += chunkSize) {
       const chunk = preview.records.slice(i, i + chunkSize);
@@ -346,37 +468,19 @@ class ImportService {
         }
 
         try {
-          // Fetch dynamic UUID mappings for Exam, Section, and Topic
-          let resolvedExamId = '00000000-0000-0000-0000-000000000001';
-          let resolvedSectionId = '00000000-0000-0000-0000-000000000002';
-          let resolvedTopicId = '00000000-0000-0000-0000-000000000003';
+          const rawExam = (record.rawData.examCode || '').toLowerCase().trim();
+          const cleanExamKey = rawExam.replace(/20\d\d/g, '').trim();
+          const rawSec = (record.rawData.sectionName || '').toLowerCase().trim();
+          const rawTop = (record.rawData.topicTitle || '').toLowerCase().trim();
 
-          try {
-            const { data: exData } = await supabase
-              .from('exams')
-              .select('id')
-              .or(`code.ilike.%${record.rawData.examCode}%,title.ilike.%${record.rawData.examCode}%`)
-              .limit(1)
-              .maybeSingle();
-            if (exData?.id) resolvedExamId = exData.id;
+          const resolvedExamId = examMap[rawExam] || examMap[cleanExamKey] || examMap[rawExam.replace(/[\s-_]+/g, '')] || defaultExamUuid;
+          const resolvedSectionId = sectionMap[rawSec] || sectionMap[rawSec.replace(/[\s-_]+/g, '')] || defaultSectionUuid;
+          const resolvedTopicId = topicMap[rawTop] || defaultTopicUuid;
 
-            const { data: secData } = await supabase
-              .from('sections')
-              .select('id')
-              .or(`name.ilike.%${record.rawData.sectionName}%,code.ilike.%${record.rawData.sectionName}%`)
-              .limit(1)
-              .maybeSingle();
-            if (secData?.id) resolvedSectionId = secData.id;
-
-            const { data: topData } = await supabase
-              .from('topics')
-              .select('id')
-              .ilike('title', `%${record.rawData.topicTitle}%`)
-              .limit(1)
-              .maybeSingle();
-            if (topData?.id) resolvedTopicId = topData.id;
-          } catch {
-            // Fallback to resolved UUIDs
+          if (!resolvedExamId || !resolvedSectionId || !resolvedTopicId) {
+            console.warn(`Unresolved metadata for row ${record.rowNumber}. Skipping insert to avoid DB FK error.`);
+            failed++;
+            continue;
           }
 
           // Staging status MUST default to 'draft' or 'under_review'
