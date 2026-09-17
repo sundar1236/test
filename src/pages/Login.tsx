@@ -84,7 +84,7 @@ export const Login: React.FC = () => {
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="sundhar1301@gmail.com or admin"
+                placeholder="user@example.com or admin"
                 className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-main)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C81] transition-all"
               />
             </div>
