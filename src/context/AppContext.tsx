@@ -154,17 +154,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // 3. Update centralized state and local cache
+    // 3. Update centralized in-memory state
     setUserProfileState(nextProfile);
-    if (activeUserId) {
-      localStorage.setItem(`bank_app_user_profile_${activeUserId}`, JSON.stringify(nextProfile));
-    }
     return true;
   };
 
   const handleSignOut = async () => {
     setIsLoadingAuth(true);
     try {
+      if (user?.id) {
+        localStorage.removeItem(`bank_app_user_profile_${user.id}`);
+      }
       await authService.signOut();
     } catch (err) {
       console.warn('Sign out error:', err);
