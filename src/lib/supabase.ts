@@ -1,14 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const env: Record<string, string | undefined> =
+  typeof import.meta !== 'undefined' && import.meta?.env ? (import.meta.env as Record<string, string | undefined>) : {};
+
+const rawUrl = env.VITE_SUPABASE_URL;
 const supabaseUrl =
   rawUrl && !rawUrl.includes('placeholder-project')
     ? rawUrl
     : 'https://klzpmakufpfhjbokzaof.supabase.co';
 
 const rawKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY;
+  env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  env.VITE_SUPABASE_ANON_KEY;
 
 const supabaseKey =
   rawKey && !rawKey.includes('placeholder')
