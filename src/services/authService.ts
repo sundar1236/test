@@ -57,29 +57,15 @@ export const authService = {
   async signIn(identifier: string, pass: string) {
     let cleanEmail = identifier.trim().toLowerCase();
 
-    // Map username aliases to email addresses
+    // Map known username aliases to their corresponding email addresses
     if (!cleanEmail.includes('@')) {
       if (cleanEmail === 'admin' || cleanEmail === 'sundhar') {
         cleanEmail = 'sundhar1301@gmail.com';
       } else if (cleanEmail === 'student' || cleanEmail === 'test') {
         cleanEmail = 'student@test.com';
       } else {
-        try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('email')
-            .ilike('full_name', `%${cleanEmail}%`)
-            .limit(1)
-            .maybeSingle();
-
-          if (data?.email) {
-            cleanEmail = data.email;
-          } else {
-            cleanEmail = `${cleanEmail}@example.com`;
-          }
-        } catch {
-          cleanEmail = `${cleanEmail}@example.com`;
-        }
+        // Unknown username without an @ symbol: throw standard invalid credentials error directly
+        throw this.formatAuthError('Invalid login credentials');
       }
     }
 
