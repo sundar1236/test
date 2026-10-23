@@ -1,4 +1,4 @@
-import {
+import type {
   TestAttemptResult,
   DashboardStats,
   PerformanceTrendPoint,
@@ -11,7 +11,7 @@ import {
   PerformanceInsight,
   ExamCategory,
   SubjectSection
-} from '../types';
+} from '../types/index.ts';
 
 export const MINIMUM_TOPIC_SAMPLE_SIZE = 5;
 
